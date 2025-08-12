@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Course Page</title>
   <style>
     body {
@@ -33,6 +34,13 @@
       font-size: 18px;
       color: #ccc;
     }
+    h1 {
+  font-size: 6vw; /* adjusts based on screen width */
+}
+
+.course {
+  padding: 4vw;
+}
     .course {
       background: #1c1c2b;
       margin: 10px 0;
@@ -54,6 +62,15 @@
     .btn-own {
       background: #10b981;
     }
+    @media (max-width: 600px) {
+  .btn {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  .course {
+    margin: 5px 0;
+  }
+      }
     .admin-controls {
       position: absolute;
       top: 10px;
