@@ -113,6 +113,7 @@ nav {
 <nav>
   <button class="tab active" data-target="notifications">Send Notification</button>
   <button class="tab" data-target="tools">Manage Tools & Scripts</button>
+    <button class="tab" data-target="newUsers">New Users</button>
   <button class="tab" data-target="addCourse">Add Course</button>
   <button class="tab" data-target="addApp">Add Apps</button>
   <button class="tab" data-target="premium">Manage Premium</button>
@@ -372,6 +373,11 @@ nav {
 
   <hr>
   <div id="toolsList"></div>
+</div>
+  <!-- New Users Tab Content -->
+<div id="newUsers" class="section">
+  <h2>New Registered Users</h2>
+  <div id="newUsersList">Loading users...</div>
 </div>
 <script>
   
@@ -1056,6 +1062,44 @@ document.querySelectorAll(".tab").forEach(button => {
   });
 });
 
+  async function loadNewUsers() {
+  const container = document.getElementById("newUsersList");
+  container.innerHTML = "Loading users...";
+
+  try {
+    const snapshot = await db.collection("users")
+      .orderBy("createdAt", "desc")  // newest first
+      .limit(20)                     // show latest 20 users
+      .get();
+
+    if (snapshot.empty) {
+      container.innerHTML = "<p>No new users found.</p>";
+      return;
+    }
+
+    container.innerHTML = "";
+    snapshot.forEach(doc => {
+      const user = doc.data();
+      container.innerHTML += `
+        <div class="user-card" style="background:#222; padding:10px; margin-bottom:10px; border-radius:8px;">
+          <strong>${user.username || "No username"}</strong><br/>
+          Email: ${user.email || "No email"}<br/>
+          Role: ${user.role || "N/A"}<br/>
+          Registered: ${user.createdAt ? user.createdAt.toDate().toLocaleString() : "Unknown"}
+        </div>
+      `;
+    });
+  } catch (error) {
+    container.innerHTML = "<p style='color:red'>Error loading users.</p>";
+    console.error("Error loading new users:", error);
+  }
+}
+
+// Call loadNewUsers when admin dashboard loads or tab is clicked
+loadNewUsers();
+
+// Optional: Also call loadNewUsers when the newUsers tab button is clicked
+document.querySelector('button[data-target="newUsers"]').addEventListener('click', loadNewUsers);
 const canvas = document.getElementById("normsMatrix");
 const ctx = canvas.getContext("2d");
 canvas.height = window.innerHeight;
