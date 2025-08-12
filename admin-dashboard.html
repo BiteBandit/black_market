@@ -283,9 +283,9 @@ nav {
       Target Role:
       <select id="courseRole" required>
         <option value="">-- Select Role --</option>
-        <option value="norm">Norm</option>
-        <option value="techie">Techie</option>
-        <option value="fraud">Fraud</option>
+        <option value="norms">Norm</option>
+        <option value="techies">Techie</option>
+        <option value="frauds">Fraud</option>
         <option value="admin">Admin</option>
         <option value="all">All Users</option>
       </select>
@@ -327,9 +327,9 @@ nav {
       Target Role:
       <select id="appRole" required>
         <option value="">-- Select Role --</option>
-        <option value="norm">Norm</option>
-        <option value="techie">Techie</option>
-        <option value="fraud">Fraud</option>
+        <option value="norms">Norm</option>
+        <option value="techies">Techie</option>
+        <option value="frauds">Fraud</option>
         <option value="admin">Admin</option>
         <option value="all">All Users</option>
       </select>
@@ -664,9 +664,9 @@ async function loadAnalytics() {
     // Set initial role counts to 0
     const roleCounts = {
       admin: 0,
-      fraud: 0,
-      norm: 0,
-      techie: 0
+      frauds: 0,
+      norms: 0,
+      techies: 0
     };
 
     usersSnap.forEach(doc => {
@@ -692,9 +692,9 @@ async function loadAnalytics() {
         <hr style="margin: 10px 0;" />
         <h3>Members by Role:</h3>
         <p>👑 <strong>Admin:</strong> ${roleCounts.admin}</p>
-        <p>🕵️‍♂️ <strong>Fraud:</strong> ${roleCounts.fraud}</p>
-        <p>👤 <strong>Norm:</strong> ${roleCounts.norm}</p>
-        <p>💻 <strong>Techie:</strong> ${roleCounts.techie}</p>
+        <p>🕵️‍♂️ <strong>Fraud:</strong> ${roleCounts.frauds}</p>
+        <p>👤 <strong>Norm:</strong> ${roleCounts.norms}</p>
+        <p>💻 <strong>Techie:</strong> ${roleCounts.techies}</p>
       </div>
     `;
   } catch (err) {
