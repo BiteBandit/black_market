@@ -822,33 +822,33 @@ document.getElementById("addCourseForm").onsubmit = async (e) => {
   try {
     const newDocRef = db.collection("courses").doc();
 
-    await newDocRef.set({
-      title,
-      size,
-      description,
-      price,
-      download,
-      role,
-      feedback: {}
+await newDocRef.set({
+  title,
+  size,
+  description,
+  price,
+  download,
+  role,
+  feedback: {}
+});
+
+// Query users with matching role
+const usersSnapshot = await db.collection("users").where("role", "==", role).get();
+
+const notificationPromises = usersSnapshot.docs.map(userDoc => {
+  return db.collection("users")
+    .doc(userDoc.id)
+    .collection("notifications")
+    .add({
+      type: "new_course",
+      title: "New Course Added!",
+      message: `A new course titled "${title}" has been uploaded.`,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),  // <== This is correct in compat
+      read: false
     });
+});
 
-    // Send notifications to users with matching role
-    const usersSnapshot = await db.collection("users").where("role", "==", role).get();
-
-    const notificationPromises = usersSnapshot.docs.map((userDoc) => {
-      return db.collection("users")
-        .doc(userDoc.id)
-        .collection("notifications")
-        .add({
-          type: "new_course",
-          title: "New Course Added!",
-          message: `A new course titled "${title}" has been uploaded.`,
-createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          read: false
-        });
-    });
-
-    await Promise.all(notificationPromises);
+await Promise.all(notificationPromises);
 
     messageDiv.style.color = "lightgreen";
     messageDiv.textContent = "✅ Course added and notifications sent!";
