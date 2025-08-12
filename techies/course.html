@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Course Page</title>
   <style>
     body {
@@ -42,6 +43,25 @@
     }
     .course h3 {
       margin: 0 0 10px;
+    }
+    h1 {
+  font-size: 6vw; /* adjusts based on screen width */
+}
+
+.course {
+  padding: 4vw;
+}
+    .course h3, .course p {
+  word-wrap: break-word;
+        }
+    @media (max-width: 600px) {
+  .btn {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  .course {
+    margin: 5px 0;
+  }
     }
     .btn {
       background: #facc15;
