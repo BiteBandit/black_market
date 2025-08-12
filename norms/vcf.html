@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VCF Black Vault</title>
+  <style>
+    body {
+  margin: 0;
+  padding: 20px;
+  font-family: 'Helvetica Neue', sans-serif;
+  background: black; /* Calm dark blue */
+  color: white;
+  /* Allow scrolling */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Matrix canvas background */
+#normsMatrix {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1; /* behind everything */
+  pointer-events: none; /* allow clicking/scrolling */
+}
+
+
+    h2 {
+      text-align: center;
+      color: white;
+      font-size: 2rem;
+      margin-bottom: 30px;
+      text-shadow: 0 0 5px black;
+    }
+
+#vcfList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  padding: 10px;
+}
+
+.vcf-card {
+  background: linear-gradient(145deg, #0e0e0e, #1a1a1a);
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 20px rgba(0, 255, 136, 0.05);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.vcf-card::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  left: -40%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(0, 255, 136, 0.1), transparent 70%);
+  transform: rotate(25deg);
+  pointer-events: none;
+}
+
+.vcf-card:hover {
+  box-shadow: 0 0 25px white;
+  transform: scale(1.02);
+}
+
+.vcf-card h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.vcf-card p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #bbbbbb;
+}
+
+.vcf-card p.price {
+  color: #00ff88;
+  font-weight: 600;
+}
+
+.vcf-card p.contacts {
+  color: #ffd700;
+}
+
+.vcf-card button {
+  margin-top: 14px;
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  background: white;
+  color: #000;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.vcf-card button:hover {
+  background: black;
+}
+
+    #premiumAlert {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.85);
+  z-index: 9999;
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+#premiumAlert .box {
+  background: #1c1c1c;
+  padding: 30px;
+  border-radius: 12px;
+  color: white;
+  text-align: center;
+  max-width: 90%;
+  box-shadow: 0 0 30px rgba(255,255,255,0.1);
+}
+
+#premiumAlert .box h2 {
+  font-size: 1.4rem;
+  margin-bottom: 15px;
+}
+
+#premiumAlert .box p {
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+}
+
+#premiumAlert .box button {
+  padding: 10px 20px;
+  border: none;
+  background: #378f7b;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+}
+    
+  </style>
+</head>
+  <canvas id="normsMatrix"></canvas>
+<body>
+
+<h2>📁 VCF Files</h2>
+<div id="vcfList">Loading...</div>
+<div class="alert" id="alertBox"></div>
+<div id="premiumAlert">
+  <div class="box">
+    <h2 id="alertTitle">Notice</h2>
+    <p id="alertMessage">Your custom message here</p>
+    <button onclick="closeAlert()">OK</button>
+  </div>
+</div>
+<script>
+  function showAlert(title, message) {
+    document.getElementById("alertTitle").innerText = title;
+    document.getElementById("alertMessage").innerText = message;
+    document.getElementById("premiumAlert").style.display = "flex";
+  }
+
+  function closeAlert() {
+    document.getElementById("premiumAlert").style.display = "none";
+  }
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+     apiKey: "AIzaSyBCZOF7uAxlygOk1ydwSP-j3BiYzyxulf4",
+  authDomain: "black-market-b6eee.firebaseapp.com",
+  projectId: "black-market-b6eee",
+  storageBucket: "black-market-b6eee.firebasestorage.app",
+  messagingSenderId: "537330859830",
+  appId: "1:537330859830:web:1db4f16f760940f17c3d97",
+  measurementId: "G-XN0JMTLMRW"
+    };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth();
+
+  const vcfList = document.getElementById('vcfList');
+
+  // NEW ALERT SYSTEM
+  function showAlert(title, message) {
+    document.getElementById("alertTitle").innerText = title;
+    document.getElementById("alertMessage").innerText = message;
+    document.getElementById("premiumAlert").style.display = "flex";
+  }
+
+  function closeAlert() {
+    document.getElementById("premiumAlert").style.display = "none";
+  }
+
+  // USER SESSION
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      let balance = userSnap.data()?.balance || 0;
+
+      try {
+        const querySnapshot = await getDocs(collection(db, "vcf_files"));
+        vcfList.innerHTML = '';
+
+        if (querySnapshot.empty) {
+          vcfList.innerHTML = '<p class="text-center text-gray-400">No VCF files available yet.</p>';
+          return;
+        }
+
+        querySnapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const title = data.title || "Untitled";
+          const contactCount = data.count || 0;
+          const price = data.price || 0;
+          const downloadUrl = data.driveLink || "#";
+
+          const card = document.createElement('div');
+          card.className = 'vcf-card bg-black-market border border-gray-700 rounded p-4 shadow-md';
+
+          card.innerHTML = `
+  <h3>${title}</h3>
+  <p class="contacts">👥 ${contactCount} Contacts</p>
+  <p class="price">💰 ${price === 0 ? 'Free' : '₦' + price}</p>
+  <button>
+    ${price === 0 ? 'Download' : 'Buy & Download'}
+  </button>
+`;
+
+          card.querySelector('button').onclick = async () => {
+            if (price === 0) {
+              showAlert("Free Download", "✅ Starting your free download...");
+              window.open(downloadUrl, '_blank');
+            } else {
+              if (balance >= price) {
+                await updateDoc(userRef, { balance: balance - price });
+                balance -= price;
+                showAlert("Success", `✅ ₦${price} deducted. Download starting...`);
+                window.open(downloadUrl, '_blank');
+              } else {
+                showAlert("Insufficient Balance", "❌ Please fund your wallet to proceed.");
+              }
+            }
+          };
+
+          vcfList.appendChild(card);
+        });
+      } catch (error) {
+        console.error('Error fetching VCF files:', error);
+        showAlert("Error", "⚠️ Could not load VCF files.");
+      }
+    } else {
+      vcfList.innerHTML = '<p class="text-center text-red-500 font-bold">Please log in to view available VCF files.</p>';
+    }
+  });
+</script>
+<script>
+  const canvas = document.getElementById("normsMatrix");
+  const ctx = canvas.getContext("2d");
+
+  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
+
+  const letters = "01";
+  const fontSize = 16;
+  const columns = canvas.width / fontSize;
+  const drops = Array.from({ length: columns }).fill(1);
+
+  function draw() {
+    // Translucent background to slowly fade out
+    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#00ffe1"; // Calmer cyan glow
+    ctx.font = fontSize + "px monospace";
+
+    for (let i = 0; i < drops.length; i++) {
+      const text = letters.charAt(Math.floor(Math.random() * letters.length));
+      ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+  }
+
+  setInterval(draw, 35);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Black Market Ads</title>
+  <style>
+    body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Helvetica Neue', sans-serif;
+  background: black; /* Calm dark blue */
+  color: white;
+  /* Allow scrolling */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+#matrix {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1; /* behind everything */
+  pointer-events: none; /* allow clicking/scrolling */
+}
+
+    .header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .whatsapp-btn {
+      display: block;
+      width: 90%;
+      background-color: black;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      border: none;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 10px;
+      margin: 0 auto 2rem;
+      text-decoration: none;
+    }
+    .ads-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .ad-card {
+      background-color: #1c1c1c;
+      padding: 1rem;
+      border-radius: 10px;
+    }
+    .ad-card img,
+    .ad-card video {
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 0.5rem;
+    }
+    .ad-date {
+      font-size: 0.8rem;
+      color: #999;
+      margin-top: 0.5rem;
+    }
+    .ad-btn {
+      display: inline-block;
+      margin-top: 0.8rem;
+      padding: 0.5rem 1rem;
+      background: #00aaff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .total-earnings {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 1rem;
+      color: #0f0;
+    }
+  </style>
+</head>
+<body>
+      <canvas id="matrix"></canvas>
+  <div class="header">
+    <h3>📢 Sponsored Ads</h3>
+    <p>🎯 Participate in Ads — Each Click Counts!</p>
+  </div>
+  <div class="total-earnings" id="earnings">Total Clicks: 0</div>
+  <a href="https://wa.me/234XXXXXXXXXX" class="whatsapp-btn" target="_blank">
+    💬 Contact Admin on WhatsApp to Post Your Ad
+  </a>
+  <div class="ads-container" id="adsList"></div>
+    <script>
+  const canvas = document.getElementById('matrix');
+  const ctx = canvas.getContext('2d');
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const letters = "01";
+  const fontSize = 14;
+  const columns = Math.floor(canvas.width / fontSize);
+  const drops = new Array(columns).fill(1);
+
+  function draw() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#0f0";
+    ctx.font = `${fontSize}px monospace`;
+
+    for (let i = 0; i < drops.length; i++) {
+      const text = letters[Math.floor(Math.random() * letters.length)];
+      ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+
+      drops[i]++;
+    }
+  }
+
+  setInterval(draw, 50);
+
+  </script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getFirestore, collection, getDocs, query, orderBy,
+    doc, getDoc, setDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import {
+    getAuth, onAuthStateChanged, signInAnonymously
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBCZOF7uAxlygOk1ydwSP-j3BiYzyxulf4",
+    authDomain: "black-market-b6eee.firebaseapp.com",
+    projectId: "black-market-b6eee",
+    storageBucket: "black-market-b6eee.appspot.com",
+    messagingSenderId: "537330859830",
+    appId: "1:537330859830:web:1db4f16f760940f17c3d97"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  let currentUserId = null;
+
+  signInAnonymously(auth).then(() => {
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        await renderAds();
+        await updateTotalClicks();
+      }
+    });
+  });
+
+  async function updateTotalClicks() {
+    const clicksRef = collection(db, `users/${currentUserId}/ad_clicks`);
+    const snap = await getDocs(clicksRef);
+    document.getElementById("earnings").textContent = `Total Clicks: ${snap.size}`;
+  }
+
+  async function renderAds() {
+    const adsRef = collection(db, "ads");
+    const q = query(adsRef, orderBy("timestamp", "desc"));
+    const snapshot = await getDocs(q);
+    const container = document.getElementById("adsList");
+    container.innerHTML = "";
+
+    const clicksRef = collection(db, `users/${currentUserId}/ad_clicks`);
+    const clickDocs = await getDocs(clicksRef);
+    const clickedAds = new Set(clickDocs.docs.map(doc => doc.id));
+
+    snapshot.forEach(docSnap => {
+      const ad = docSnap.data();
+      const adId = docSnap.id;
+      const expiry = ad.expiryDate?.seconds ? new Date(ad.expiryDate.seconds * 1000) : null;
+      const now = new Date();
+
+      if (clickedAds.has(adId) || (expiry && expiry < now)) return;
+
+      const media = ad.mediaType === "video"
+        ? `<video controls src="${ad.mediaUrl}" preload="metadata"></video>`
+        : `<img src="${ad.mediaUrl}" alt="Ad Media"/>`;
+
+      const postedDate = ad.timestamp?.seconds
+        ? new Date(ad.timestamp.seconds * 1000).toLocaleDateString()
+        : "Unknown";
+
+      container.insertAdjacentHTML("beforeend", `
+        <div class="ad-card" id="ad-${adId}">
+          <p>${ad.title || ""}</p>
+          <p>${ad.description || ""}</p>
+          ${media}
+          <button class="ad-btn" onclick="handleClick('${adId}', '${ad.link}')">Click Ad</button>
+          <div class="ad-date">Posted on ${postedDate}</div>
+        </div>
+      `);
+    });
+  }
+
+  window.handleClick = async function (adId, link) {
+    const btn = document.querySelector(`#ad-${adId} .ad-btn`);
+    btn.disabled = true;
+
+    window.open(link, '_blank');
+
+    const clickRef = doc(db, `users/${currentUserId}/ad_clicks/${adId}`);
+    const already = await getDoc(clickRef);
+
+    if (!already.exists()) {
+      await setDoc(clickRef, {
+        clicked: true,
+        timestamp: serverTimestamp()
+      });
+    }
+
+    document.getElementById(`ad-${adId}`)?.remove();
+    await updateTotalClicks();
+  };
+</script>
+</body>
+</html>

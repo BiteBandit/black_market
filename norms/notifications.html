@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Notifications | Black Market</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Helvetica+Neue:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', sans-serif;
+      background-color: black;
+      color: #f1f1f1;
+      padding: 20px;
+    }
+
+/* Matrix canvas background */
+#normsMatrix {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1; /* behind everything */
+  pointer-events: none; /* allow clicking/scrolling */
+}
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+      color: #fff;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+    }
+
+    .notification {
+      background: #1a1a1a;
+      padding: 15px 20px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      transition: transform 0.2s ease;
+      border-left: 4px solid #378f7b;
+    }
+
+    .notification:hover {
+      transform: translateY(-2px);
+    }
+
+    .notification.warning {
+      border-left-color: orange;
+    }
+
+    .notification.error {
+      border-left-color: #e63946;
+    }
+
+    .notification.unread {
+      background-color: #121212;
+      border-left-color: #38bdf8;
+    }
+
+    .notification p {
+      margin-bottom: 6px;
+      font-size: 1rem;
+      color: #e2e2e2;
+    }
+
+    .notification .date {
+      font-size: 0.85rem;
+      color: #888;
+      text-align: right;
+    }
+
+    .empty-state {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 1rem;
+      color: #888;
+    }
+
+    .back-btn {
+      display: inline-block;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+      color: #38bdf8;
+      text-decoration: none;
+    }
+
+    .back-btn:hover {
+      text-decoration: underline;
+    }
+
+    #popupAlert {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a1a;
+      color: #fff;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.5);
+      border-left: 4px solid orange;
+      display: none;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+   <canvas id="normsMatrix"></canvas>
+  <div id="popupAlert"></div>
+
+  <div class="container">
+    <h1>🔔 Notifications</h1>
+    <div id="notifications"></div>
+  </div>
+<script>
+  const canvas = document.getElementById("normsMatrix");
+  const ctx = canvas.getContext("2d");
+
+  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
+
+  const letters = "01";
+  const fontSize = 14;
+  const columns = canvas.width / fontSize;
+  const drops = Array.from({ length: columns }).fill(1);
+
+  function draw() {
+    // Translucent background to slowly fade out
+    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#00ffe1"; // Calmer cyan glow
+    ctx.font = fontSize + "px monospace";
+
+    for (let i = 0; i < drops.length; i++) {
+      const text = letters.charAt(Math.floor(Math.random() * letters.length));
+      ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+  }
+
+  setInterval(draw, 35);
+</script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBCZOF7uAxlygOk1ydwSP-j3BiYzyxulf4",
+      authDomain: "black-market-b6eee.firebaseapp.com",
+      projectId: "black-market-b6eee",
+      storageBucket: "black-market-b6eee.appspot.com",
+      messagingSenderId: "537330859830",
+      appId: "1:537330859830:web:1db4f16f760940f17c3d97",
+      measurementId: "G-XN0JMTLMRW"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    function showPopup(message) {
+      const popup = document.getElementById("popupAlert");
+      popup.textContent = message;
+      popup.style.display = "block";
+      setTimeout(() => popup.style.display = "none", 5000);
+    }
+
+    auth.onAuthStateChanged(async user => {
+      if (user) {
+        const uid = user.uid;
+        const container = document.getElementById("notifications");
+
+        // Live updates
+        db.collection("users").doc(uid).collection("notifications")
+          .orderBy("createdAt", "desc")
+          .onSnapshot(snapshot => {
+            container.innerHTML = "";
+
+            if (snapshot.empty) {
+              container.innerHTML = `<p class="empty-state">You have no notifications at this time.</p>`;
+              return;
+            }
+
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              const time = data.createdAt?.toDate()?.toLocaleString() || "Unknown time";
+              const type = data.type || "";
+              const read = data.read === false ? "unread" : "";
+              const html = `
+                <div class="notification ${type} ${read}">
+                  <p>${data.message}</p>
+                  <p class="date">${time}</p>
+                </div>
+              `;
+              container.innerHTML += html;
+
+              // Auto-popup for premium alerts
+              if (read === "unread" && data.message.toLowerCase().includes("premium")) {
+                showPopup(data.message);
+              }
+
+              // Mark as read
+              if (doc.ref && data.read === false) {
+                doc.ref.update({ read: true });
+              }
+            });
+          });
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+    firebase.auth().onAuthStateChanged((user) => {
+  if (user) {
+    const notifRef = db.collection("users").doc(user.uid).collection("notifications");
+
+    notifRef.where("read", "==", false).get().then((querySnapshot) => {
+      const batch = db.batch();
+      querySnapshot.forEach((doc) => {
+        batch.update(doc.ref, { read: true });
+      });
+      return batch.commit();
+    });
+  }
+});
+  </script>
+</body>
+</html>

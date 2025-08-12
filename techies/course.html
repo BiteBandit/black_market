@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Course Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0a0a23;
+      color: white;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+        #normsMatrix {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: -1;
+      pointer-events: none;
+    }
+    .container {
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .course-count {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 18px;
+      color: #ccc;
+    }
+    .course {
+      background: #1c1c2b;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 10px;
+      position: relative;
+    }
+    .course h3 {
+      margin: 0 0 10px;
+    }
+    .btn {
+      background: #facc15;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin-right: 10px;
+    }
+    .btn-own {
+      background: #10b981;
+    }
+    .admin-controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    .star-rating {
+      margin: 10px 0;
+    }
+    .star {
+      font-size: 20px;
+      color: gray;
+      cursor: pointer;
+    }
+    .star.selected {
+      color: gold;
+    }
+    .notification {
+      background: #2563eb;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+    }
+        #premiumAlert {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #premiumAlert .box {
+      background: #1c1c1c;
+      padding: 30px;
+      border-radius: 12px;
+      color: white;
+      text-align: center;
+      max-width: 90%;
+      box-shadow: 0 0 30px rgba(255,255,255,0.1);
+    }
+
+    #premiumAlert .box h2 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+    }
+
+    #premiumAlert .box p {
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+
+    #premiumAlert .box button {
+      padding: 10px 20px;
+      border: none;
+      background: #378f7b;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+    <canvas id="normsMatrix"></canvas>
+  <div class="container">
+    <h1>Available Courses</h1>
+    <div class="notification" id="notificationBox" style="display: none;"></div>
+    <div class="course-count" id="courseCount">You own 0 courses</div>
+    <div id="courseList"></div>
+  </div>
+  <div id="premiumAlert">
+  <div class="box">
+    <h2>Notification</h2>
+    <p id="premiumAlertMsg">Thanks for rating!</p>
+    <button onclick="document.getElementById('premiumAlert').style.display='none'">OK</button>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById("normsMatrix");
+  const ctx = canvas.getContext("2d");
+
+  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
+
+  const letters = "01";
+  const fontSize = 16;
+  const columns = canvas.width / fontSize;
+  const drops = Array.from({ length: columns }).fill(1);
+
+  function draw() {
+    // Translucent background to slowly fade out
+    ctx.fillStyle = "rgba(10, 10, 35, 0.05)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#00ffe1"; // Calmer cyan glow
+    ctx.font = fontSize + "px monospace";
+
+    for (let i = 0; i < drops.length; i++) {
+      const text = letters.charAt(Math.floor(Math.random() * letters.length));
+      ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+  }
+
+  setInterval(draw, 35);
+</script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import {
+      getFirestore, collection, getDocs, doc,
+      getDoc, updateDoc, deleteDoc
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import {
+      getAuth, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+    // ✅ REPLACE WITH YOUR FIREBASE CONFIG
+    const firebaseConfig = {
+     apiKey: "AIzaSyBCZOF7uAxlygOk1ydwSP-j3BiYzyxulf4",
+  authDomain: "black-market-b6eee.firebaseapp.com",
+  projectId: "black-market-b6eee",
+  storageBucket: "black-market-b6eee.appspot.com",
+  messagingSenderId: "537330859830",
+  appId: "1:537330859830:web:1db4f16f760940f17c3d97"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth();
+
+    let userId = "";
+    let ownedCourses = [];
+
+    const courseList = document.getElementById("courseList");
+    const courseCount = document.getElementById("courseCount");
+    const notificationBox = document.getElementById("notificationBox");
+
+    onAuthStateChanged(auth, async user => {
+      if (user) {
+        userId = user.uid;
+        await loadCourses();
+        await checkNotifications();
+      } else {
+        courseList.innerHTML = "<p>Please log in to view courses.</p>";
+      }
+    });
+
+    async function loadCourses() {
+      const userDoc = await getDoc(doc(db, "users", userId));
+      ownedCourses = userDoc.exists() && userDoc.data().ownedCourses || [];
+
+      const courseSnapshot = await getDocs(collection(db, "courses"));
+      let count = 0;
+
+      courseList.innerHTML = "";
+      courseSnapshot.forEach(docSnap => {
+        const course = docSnap.data();
+        const isOwned = ownedCourses.includes(docSnap.id);
+        const isAdmin = userDoc.data().role === "admin";
+
+        const div = document.createElement("div");
+        div.className = "course";
+
+        div.innerHTML = `
+          <h3>${course.title}</h3>
+          <p>Size: ${course.size} MB</p>
+          <p>${course.description || ""}</p>
+          <button class="btn ${isOwned ? "btn-own" : ""}" 
+                  onclick="${isOwned ? `downloadCourse('${course.download}')` : `buyCourse('${docSnap.id}', '${course.price}', '${course.download}')`}">
+            ${isOwned ? "Download" : course.price === 0 ? "Free" : `Buy (${course.price})`}
+          </button>
+          <div class="star-rating" data-id="${docSnap.id}">
+            ${[1,2,3,4,5].map(n => `<span class="star" data-star="${n}">&#9733;</span>`).join('')}
+          </div>
+          <div class="average-rating" id="avg-${docSnap.id}" style="margin-top: 6px; font-size: 0.95rem; color: #ccc;">
+  Loading rating...
+</div>
+          ${isAdmin ? `<div class="admin-controls">
+              <button class="btn" onclick="editCourse('${docSnap.id}')">Edit</button>
+              <button class="btn" onclick="deleteCourse('${docSnap.id}')">Delete</button>
+          </div>` : ""}
+        `;
+        courseList.appendChild(div);
+
+        count += isOwned ? 1 : 0;
+      });
+
+      courseCount.textContent = `You own ${count} course${count !== 1 ? "s" : ""}`;
+      await initRatingEvents(); // make it await
+    }
+
+    window.downloadCourse = (link) => {
+      window.open(link, "_blank");
+    }
+
+    window.buyCourse = async (courseId, price, downloadLink) => {
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+      const balance = userSnap.data().balance;
+
+      if (Number(balance) >= Number(price)) {
+        const newBalance = balance - price;
+        const updatedOwned = [...(userSnap.data().ownedCourses || []), courseId];
+        await updateDoc(userRef, {
+          balance: newBalance,
+          ownedCourses: updatedOwned
+        });
+        showPremiumAlert("Purchase successful!");
+        window.location.reload();
+      } else {
+        alert("Insufficient balance.");
+      }
+    }
+
+    window.editCourse = (id) => {
+      alert("Edit logic not added yet for course ID: " + id);
+    }
+
+    window.deleteCourse = async (id) => {
+      if (confirm("Are you sure you want to delete this course?")) {
+        await deleteDoc(doc(db, "courses", id));
+        alert("Deleted.");
+        window.location.reload();
+      }
+    }
+
+async function loadUserRating() {
+  const courseSnap = await getDoc(courseRef);
+  const courseData = courseSnap.data();
+
+  const userRating = courseData.feedback?.[userId];
+
+  if (userRating) {
+    const stars = document.querySelectorAll(".star");
+    stars.forEach(star => {
+      const starVal = Number(star.getAttribute("data-star"));
+      if (starVal <= userRating) {
+        star.classList.add("selected");
+      } else {
+        star.classList.remove("selected");
+      }
+    });
+  }
+}
+
+    async function initRatingEvents() {
+  const courseElems = document.querySelectorAll(".star-rating");
+  
+  for (const rating of courseElems) {
+    const courseId = rating.getAttribute("data-id");
+    const courseRef = doc(db, "courses", courseId);
+    const courseSnap = await getDoc(courseRef);
+    const feedback = courseSnap.data().feedback || {};
+
+    const userRating = feedback[userId] || 0;
+    const stars = rating.querySelectorAll(".star");
+
+    // ✅ Highlight user's previous rating
+    stars.forEach(star => {
+      const val = Number(star.getAttribute("data-star"));
+      if (val <= userRating) {
+        star.classList.add("selected");
+      } else {
+        star.classList.remove("selected");
+      }
+    });
+
+    // ⭐ Rating click event
+    stars.forEach(star => {
+      star.addEventListener("click", async () => {
+        const val = Number(star.getAttribute("data-star"));
+
+        // Check ownership
+        const userRef = doc(db, "users", userId);
+        const userSnap = await getDoc(userRef);
+        const ownedCourses = userSnap.data()?.ownedCourses || [];
+
+        if (!ownedCourses.includes(courseId)) {
+          showPremiumAlert("You must purchase this course before rating it.");
+          return;
+        }
+
+        await updateDoc(courseRef, {
+          [`feedback.${userId}`]: val
+        });
+
+        showPremiumAlert("Thanks for rating this course!");
+
+        // Refresh stars
+        stars.forEach(s => s.classList.remove("selected"));
+        stars.forEach(s => {
+          if (Number(s.getAttribute("data-star")) <= val) {
+            s.classList.add("selected");
+          }
+        });
+
+        updateAverage(courseRef, `avg-${courseId}`);
+      });
+    });
+
+    updateAverage(courseRef, `avg-${courseId}`);
+  }
+}
+
+async function updateAverage(courseRef, avgElemId) {
+  const avgElem = document.getElementById(avgElemId);
+  const snap = await getDoc(courseRef);
+  const feedback = snap.data().feedback || {};
+  const ratings = Object.values(feedback);
+
+  if (ratings.length === 0) {
+    avgElem.textContent = "No ratings yet.";
+    return;
+  }
+
+  const sum = ratings.reduce((a, b) => a + b, 0);
+  const avg = (sum / ratings.length).toFixed(1);
+  avgElem.textContent = `★ ${avg} (${ratings.length} rating${ratings.length !== 1 ? "s" : ""})`;
+}
+
+    async function checkNotifications() {
+      const notifRef = doc(db, "notifications", "courses");
+      const notifSnap = await getDoc(notifRef);
+      if (notifSnap.exists()) {
+        const notif = notifSnap.data().message;
+        if (notif) {
+          notificationBox.style.display = "block";
+          notificationBox.textContent = notif;
+        }
+      }
+    }
+    
+    function showPremiumAlert(msg) {
+  const alertBox = document.getElementById("premiumAlert");
+  document.getElementById("premiumAlertMsg").textContent = msg;
+  alertBox.style.display = "flex";
+}
+  </script>
+</body>
+</html>

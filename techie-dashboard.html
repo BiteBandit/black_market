@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Techies Dashboard</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Helvetica+Neue:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Helvetica Neue", sans-serif;
+        background: black; /* Calm dark blue */
+        color: white;
+        /* Allow scrolling */
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      /* Matrix canvas background */
+      #normsMatrix {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1; /* behind everything */
+        pointer-events: none; /* allow clicking/scrolling */
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: black;
+        padding: 1rem;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        gap: 10px;
+      }
+
+      .top-icons {
+        display: flex;
+        gap: 1rem;
+      }
+
+      .top-icons a {
+        color: white;
+        font-size: 1.4rem;
+      }
+
+      .dropdown {
+        position: relative;
+      }
+
+      .dropdown-content {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: black;
+        width: 90vw;
+        height: 60vh;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-20px);
+        transition: 0.3s ease;
+        border-radius: 10px;
+        z-index: 999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+      }
+
+      .dropdown.active .dropdown-content {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+
+      .dropdown-content a {
+        background: #1a1a1a;
+        padding: 12px 20px;
+        border-radius: 6px;
+        font-size: 18px;
+        color: white;
+      }
+
+      .profile-section {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+      }
+
+      .profile-pic {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 3px solid black;
+        object-fit: cover;
+      }
+
+      .user-greeting {
+        text-align: center;
+        margin: 1rem;
+        font-size: 1.2rem;
+      }
+
+      .main-nav,
+      .premium-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2rem;
+        justify-items: center;
+        padding: 2rem 1rem;
+        max-width: 350px;
+        margin: auto;
+      }
+
+      .icon-label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: white;
+        font-size: 3rem;
+        text-align: center;
+      }
+
+      .icon-label span {
+        font-size: 1rem;
+        margin-top: 6px;
+      }
+
+      .section-title {
+        text-align: center;
+        font-size: 1.4rem;
+        font-weight: bold;
+        border-bottom: 2px solid white;
+        width: fit-content;
+        margin: 20px auto 0;
+      }
+
+      .dashboard-footer {
+        background: black;
+        padding: 20px;
+        text-align: center;
+        font-size: 13px;
+      }
+
+      #premiumAlert {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        display: none;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #premiumAlert .box {
+        background: #1c1c1c;
+        padding: 30px;
+        border-radius: 12px;
+        color: white;
+        text-align: center;
+        max-width: 90%;
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+      }
+
+      #premiumAlert .box h2 {
+        font-size: 1.4rem;
+        margin-bottom: 15px;
+      }
+
+      #premiumAlert .box p {
+        font-size: 0.95rem;
+        margin-bottom: 20px;
+      }
+
+      #premiumAlert .box button {
+        padding: 10px 20px;
+        border: none;
+        background: #378f7b;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .referral-section {
+        border-bottom: 2px solid white; /* underline with referral color */
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+      .referral-section p {
+        margin: 0 0 8px 0;
+      }
+      .referral-section a {
+        text-decoration: underline;
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+      .referral-section button {
+        margin-top: 8px;
+        padding: 8px 15px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        background: white;
+        color: #000;
+        font-weight: 700;
+        transition: background-color 0.3s ease;
+      }
+      .referral-section button:hover {
+        background-color: white;
+      }
+      @keyframes blinkRed {
+        0%,
+        100% {
+          color: white;
+        }
+        50% {
+          color: red;
+        }
+      }
+
+      @keyframes blinkGreen {
+        0%,
+        100% {
+          color: white;
+        }
+        50% {
+          color: #00ff00;
+        } /* bright green */
+      }
+
+      .blink-red {
+        animation: blinkRed 1s infinite;
+        font-weight: bold;
+      }
+
+      .blink-green {
+        animation: blinkGreen 1s infinite;
+        font-weight: bold;
+      }
+
+      .contact-popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 350px;
+        max-width: 90%;
+        background: #1e1e2f;
+        color: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+        padding: 25px 30px;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        transform: translate(-50%, -50%);
+        z-index: 10000;
+        text-align: center;
+        display: none;
+      }
+
+      .contact-popup h2 {
+        margin-top: 0;
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin-bottom: 12px;
+      }
+
+      .contact-popup p {
+        font-size: 1rem;
+        margin-bottom: 25px;
+        line-height: 1.4;
+        color: #ccc;
+      }
+
+      .contact-icons {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .contact-btn {
+        flex: 1;
+        padding: 12px 0;
+        border-radius: 8px;
+        font-weight: 600;
+        color: white;
+        text-decoration: none;
+        font-size: 1.1rem;
+        transition: background-color 0.3s ease;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .contact-btn.whatsapp {
+        background-color: #25d366;
+      }
+
+      .contact-btn.whatsapp:hover {
+        background-color: #1ebe57;
+      }
+
+      .contact-btn.telegram {
+        background-color: #0088cc;
+      }
+
+      .contact-btn.telegram:hover {
+        background-color: #006da6;
+      }
+
+      .close-btn {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-size: 1.6rem;
+        cursor: pointer;
+        user-select: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="normsMatrix"></canvas>
+    <div class="topbar">
+      <div class="logo">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="64"
+          height="64"
+          viewBox="0 0 200 200"
+        >
+          <rect x="0" y="0" width="200" height="200" rx="24" fill="#0a0a0a" />
+          <text
+            x="50%"
+            y="50%"
+            dominant-baseline="middle"
+            text-anchor="middle"
+            font-size="64"
+            font-weight="700"
+            fill="#ffffff"
+          >
+            BM
+          </text>
+          <text
+            x="50%"
+            y="78%"
+            dominant-baseline="middle"
+            text-anchor="middle"
+            font-size="16"
+            fill="#38bdf8"
+          >
+            Black Market
+          </text>
+        </svg>
+        <span>Black Market</span>
+      </div>
+      <div class="top-icons">
+        <a href="techies/settings.html" class="icon-label"
+          ><i data-lucide="settings"></i
+        ></a>
+        <a href="techies/notifications.html"
+          ><i data-lucide="bell"></i> <span id="notifCount"></span
+        ></a>
+        <div class="dropdown">
+          <a href="#" class="menu-toggle"><i data-lucide="menu"></i></a>
+          <div class="dropdown-content">
+            <div style="font-size: 20px" id="balanceText">Balance: ₦0.00</div>
+            <!-- Place this somewhere at the top of your dashboard -->
+            <button
+              id="logoutBtn"
+              style="
+                background: red;
+                color: white;
+                padding: 8px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+              "
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <img
+        id="profile-pic"
+        src="https://via.placeholder.com/100"
+        alt="Profile Picture"
+        class="profile-pic"
+      />
+    </div>
+
+    <div class="user-greeting" id="userGreeting">Loading your dashboard...</div>
+
+    <div class="main-nav">
+      <a href="techies/ads.html" class="icon-label"
+        ><i data-lucide="megaphone"></i><span>Ads</span></a
+      >
+      <a href="techies/buyandsell.html" class="icon-label"
+        ><i data-lucide="shopping-cart"></i><span>Buy/Sell</span></a
+      >
+      <a href="techies/smm.html" class="icon-label"
+        ><i data-lucide="globe"></i><span>smm</span></a
+      >
+      <a href="techies/vcf.html" class="icon-label"
+        ><i data-lucide="file"></i><span>Contact files</span></a
+      >
+
+      <a href="techies/contact.html" class="icon-label"
+        ><i data-lucide="contact"></i><span>Whatsgain</span></a
+      >
+
+      <a href="techies/course.html" class="icon-label"
+        ><i data-lucide="book"></i><span>Courses</span></a
+      >
+
+      <a href="techies/app.html" class="icon-label"
+        ><i data-lucide="package"></i><span>Modded Apps</span></a
+      >
+    </div>
+
+    <h2 class="section-title">Premium</h2>
+
+    <div class="premium-grid">
+      <a
+        href="techies/premium.html"
+        class="icon-label premium-link"
+        data-link="premium1.html"
+      >
+        <i data-lucide="credit-card"></i>
+        <span>Paste Aza</span>
+      </a>
+      <a href="#" class="icon-label premium-link" data-link="premium2.html">
+        <i data-lucide="zap"></i>
+        <span>Coming soon</span>
+      </a>
+      <a href="#" class="icon-label premium-link" data-link="premium3.html">
+        <i data-lucide="dollar-sign"></i>
+        <span>Coming soon</span>
+      </a>
+      <a href="#" class="icon-label premium-link" data-link="premium4.html">
+        <i data-lucide="pie-chart"></i>
+        <span>Coming soon</span>
+      </a>
+    </div>
+
+    <div
+      class="referral-section"
+      style="
+        text-align: center;
+        margin: 20px auto;
+        max-width: 350px;
+        color: white;
+      "
+    >
+      <h3 style="text-decoration: underline; margin-bottom: 12px">
+        Referrer System
+      </h3>
+      <a
+        href="#"
+        id="referralLink"
+        target="_blank"
+        style="word-break: break-all; color: #38bdf8"
+      ></a>
+      <button id="copyReferralBtn">Copy Link</button>
+      <p style="margin-top: 12px">
+        Total Referrals: <span id="referralCount">0</span>
+      </p>
+    </div>
+
+    <div
+      style="
+        max-width: 350px;
+        margin: 30px auto;
+        color: white;
+        text-align: center;
+      "
+    >
+      <h3 style="text-decoration: underline; margin-bottom: 12px">
+        Top Referrers
+      </h3>
+      <ol
+        id="leaderboardList"
+        style="list-style-position: inside; padding-left: 0; font-size: 0.95rem"
+      ></ol>
+      <p id="leaderboardLoading" style="color: #aaa; font-size: 0.85rem">
+        Loading leaderboard...
+      </p>
+    </div>
+
+    <footer class="dashboard-footer">
+      <p>Joined: <span id="accountDate">Loading...</span></p>
+      <p>User ID: <span id="accountId">#Loading</span></p>
+      <p>© 2025 Black Market. All rights reserved.</p>
+    </footer>
+
+    <div id="premiumAlert">
+      <div class="box">
+        <h2>🔒 Premium Access Only</h2>
+        <p>
+          This feature is available for premium users only. Upgrade your account
+          to unlock exclusive tools and protection.
+        </p>
+        <button onclick="hidePremiumAlert()">Okay</button>
+      </div>
+    </div>
+    <div id="contactPopup" class="contact-popup">
+      <h2>Welcome!</h2>
+      <p>
+        If you need support or want to connect, contact us on WhatsApp or join
+        our Telegram channel.
+      </p>
+      <div class="contact-icons">
+        <a
+          href="https://chat.whatsapp.com/HAbAXpjcd9S8dUSIIOoXkd?mode=ac_t"
+          target="_blank"
+          class="contact-btn whatsapp"
+          title="WhatsApp"
+        >
+          WhatsApp
+        </a>
+        <a
+          href="https://t.me/Mind_Over_Tech"
+          target="_blank"
+          class="contact-btn telegram"
+          title="Telegram"
+        >
+          Telegram
+        </a>
+      </div>
+      <button id="closePopupBtn" class="close-btn" title="Close">
+        &times;
+      </button>
+    </div>
+    <script>
+      const canvas = document.getElementById("normsMatrix");
+      const ctx = canvas.getContext("2d");
+
+      canvas.height = window.innerHeight;
+      canvas.width = window.innerWidth;
+
+      const letters = "01";
+      const fontSize = 14;
+      const columns = canvas.width / fontSize;
+      const drops = Array.from({ length: columns }).fill(1);
+
+      function draw() {
+        // Translucent background to slowly fade out
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#02577a"; // Calmer cyan glow
+        ctx.font = fontSize + "px monospace";
+
+        for (let i = 0; i < drops.length; i++) {
+          const text = letters.charAt(
+            Math.floor(Math.random() * letters.length)
+          );
+          ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+          if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+          drops[i]++;
+        }
+      }
+
+      setInterval(draw, 35);
+    </script>
+    <script>
+      lucide.createIcons();
+      let isPremium = false;
+
+      function showPremiumAlert() {
+        document.getElementById("premiumAlert").style.display = "flex";
+      }
+
+      function hidePremiumAlert() {
+        document.getElementById("premiumAlert").style.display = "none";
+      }
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBCZOF7uAxlygOk1ydwSP-j3BiYzyxulf4",
+        authDomain: "black-market-b6eee.firebaseapp.com",
+        projectId: "black-market-b6eee",
+        storageBucket: "black-market-b6eee.appspot.com",
+        messagingSenderId: "537330859830",
+        appId: "1:537330859830:web:1db4f16f760940f17c3d97",
+        measurementId: "G-XN0JMTLMRW",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
+      async function getTopReferrers() {
+        const usersRef = db.collection("users");
+        const querySnapshot = await usersRef
+          .orderBy("referrals", "desc")
+          .limit(10)
+          .get();
+
+        const topReferrers = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          topReferrers.push({
+            username: data.username || "Anonymous",
+            referrals: data.referrals || 0,
+            profilePic: data.profilePic || "https://via.placeholder.com/40",
+          });
+        });
+        return topReferrers;
+      }
+
+      async function renderLeaderboard() {
+        const leaderboardList = document.getElementById("leaderboardList");
+        const loadingText = document.getElementById("leaderboardLoading");
+
+        loadingText.style.display = "block"; // show loading
+        leaderboardList.innerHTML = "";
+
+        try {
+          const topReferrers = await getTopReferrers();
+
+          if (topReferrers.length === 0) {
+            leaderboardList.innerHTML = "<li>No referrers found yet.</li>";
+          } else {
+            topReferrers.forEach((user, index) => {
+              const li = document.createElement("li");
+              li.style.display = "flex";
+              li.style.alignItems = "center";
+              li.style.gap = "12px";
+              li.style.marginBottom = "8px";
+
+              li.innerHTML = `
+          <span style="font-weight: bold; width: 24px; text-align: right;">${
+            index + 1
+          }.</span>
+          <img src="${user.profilePic}" alt="${
+                user.username
+              }" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #00ffe1;" />
+          <span style="flex-grow: 1; text-align: left;">${user.username}</span>
+          <span style="font-weight: bold; min-width: 30px;">${
+            user.referrals
+          }</span>
+        `;
+
+              leaderboardList.appendChild(li);
+            });
+          }
+        } catch (error) {
+          leaderboardList.innerHTML = "<li>Error loading leaderboard.</li>";
+          console.error("Leaderboard error:", error);
+        } finally {
+          loadingText.style.display = "none"; // hide loading
+        }
+      }
+
+      renderLeaderboard();
+
+      const dropdown = document.querySelector(".dropdown");
+      const menuToggle = document.querySelector(".menu-toggle");
+      menuToggle.addEventListener("click", (e) => {
+        e.preventDefault();
+        dropdown.classList.toggle("active");
+      });
+
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          window.location.href = "index.html";
+          return;
+        }
+
+        const uid = user.uid;
+        const userRef = db.collection("users").doc(uid);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          console.error("User not found.");
+          return;
+        }
+
+        const data = userDoc.data();
+        const now = new Date();
+
+        // Ensure both fields exist
+        let updates = {};
+        if (!data.premium) updates.premium = "no";
+        if (!data.premiumExpiresAt) {
+          const defaultDate = new Date();
+          defaultDate.setDate(defaultDate.getDate() + 7);
+          updates.premiumExpiresAt =
+            firebase.firestore.Timestamp.fromDate(defaultDate);
+        }
+
+        // Check if premium expired
+        let isPremium = false;
+        if (data.premium === "yes" && data.premiumExpiresAt?.toDate) {
+          const expires = data.premiumExpiresAt.toDate();
+          if (expires > now) {
+            isPremium = true;
+          } else {
+            isPremium = false;
+            updates.premium = "no";
+          }
+        }
+
+        // Apply updates if needed
+        if (Object.keys(updates).length > 0) {
+          await userRef.update(updates);
+        }
+
+        // --- Referral Code & Link ---
+        const referralCode = data.referralCode || uid; // use saved code or fallback to uid
+        const referralLink = `${window.location.origin}/register?ref=${referralCode}`;
+
+        const referralLinkElement = document.getElementById("referralLink");
+        if (referralLinkElement) {
+          referralLinkElement.textContent = referralLink;
+          referralLinkElement.href = referralLink;
+        }
+
+        const referralCountElement = document.getElementById("referralCount");
+        if (referralCountElement) {
+          referralCountElement.textContent = data.referrals || 0;
+        }
+
+        // Set UI
+        document.getElementById("userGreeting").textContent = `Welcome, ${
+          data.username || "User"
+        }!`;
+        const balanceTextEl = document.getElementById("balanceText");
+        const balance = parseFloat(data.balance) || 0;
+        balanceTextEl.textContent = `Balance: ₦${balance.toFixed(2)}`;
+
+        balanceTextEl.classList.remove("blink-red", "blink-green"); // reset classes
+
+        if (balance < 200) {
+          balanceTextEl.classList.add("blink-red");
+        } else if (balance >= 500) {
+          balanceTextEl.classList.add("blink-green");
+        } else {
+          // Normal white text, no blinking
+          balanceTextEl.style.color = "white";
+        }
+        document.getElementById("profile-pic").src =
+          data.profilePic || "https://via.placeholder.com/100";
+        document.getElementById("accountId").textContent = `#${uid}`;
+        const joinDate = data.createdAt?.toDate?.() || new Date();
+        document.getElementById("accountDate").textContent =
+          joinDate.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+
+        // 🔔 Real-time unread notification counter
+        db.collection("users")
+          .doc(uid)
+          .collection("notifications")
+          .where("read", "==", false)
+          .onSnapshot((snapshot) => {
+            const count = snapshot.size;
+            const notifCountEl = document.getElementById("notifCount");
+            notifCountEl.textContent = count > 0 ? `(${count})` : "";
+          });
+
+        // Premium button protection
+        document.querySelectorAll(".premium-link").forEach((link) => {
+          link.addEventListener("click", (e) => {
+            if (!isPremium) {
+              e.preventDefault();
+              showPremiumAlert();
+            } else {
+              const target = link.getAttribute("data-link");
+              window.location.href = target;
+            }
+          });
+        });
+      });
+
+      function copyReferralLink() {
+        const link = document.getElementById("referralLink").href;
+        navigator.clipboard
+          .writeText(link)
+          .then(() => {
+            // Instead of alert, show the premium alert modal but customize text
+            const premiumAlert = document.getElementById("premiumAlert");
+            const box = premiumAlert.querySelector(".box");
+
+            // Change the content temporarily
+            box.innerHTML = `
+      <h2>🔗 Referral Link Copied!</h2>
+      <p>Your referral link has been copied to clipboard. Share it with your friends to earn rewards!</p>
+      <button onclick="hidePremiumAlert()">Okay</button>
+    `;
+
+            premiumAlert.style.display = "flex";
+          })
+          .catch(() => {
+            alert("Failed to copy referral link. Please copy manually.");
+          });
+      }
+
+      document
+        .getElementById("copyReferralBtn")
+        .addEventListener("click", copyReferralLink);
+
+      function hidePremiumAlert() {
+        document.getElementById("premiumAlert").style.display = "none";
+      }
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const popup = document.getElementById("contactPopup");
+        const closeBtn = document.getElementById("closePopupBtn");
+
+        // Show popup on page load
+        popup.style.display = "block";
+
+        // Close popup on clicking the close button
+        closeBtn.onclick = () => {
+          popup.style.display = "none";
+        };
+      });
+
+      document
+        .getElementById("logoutBtn")
+        .addEventListener("click", function () {
+          auth.signOut().then(() => {
+            window.location.href = "Index.html"; // or "index.html" if that's your login page
+          });
+        });
+    </script>
+  </body>
+</html>

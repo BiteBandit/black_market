@@ -1,0 +1,524 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hacked & Modded Apps</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: black;
+      color: white;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    #normsMatrix {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: -1;
+      pointer-events: none;
+    }
+    .container {
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .app-count {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 18px;
+      color: #ccc;
+    }
+    .app {
+      background: #1c1c2b;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 10px;
+      position: relative;
+    }
+    .app h3 {
+      margin: 0 0 10px;
+    }
+    .btn {
+      background: #facc15;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin-right: 10px;
+    }
+    .btn-own {
+      background: #10b981;
+    }
+    .admin-controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    .star-rating {
+      margin: 10px 0;
+    }
+    .star {
+      font-size: 20px;
+      color: gray;
+      cursor: pointer;
+    }
+    .star.selected {
+      color: gold;
+    }
+    .notification {
+      background: #2563eb;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+    }
+    #premiumAlert {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+    #premiumAlert .box {
+      background: #1c1c1c;
+      padding: 30px;
+      border-radius: 12px;
+      color: white;
+      text-align: center;
+      max-width: 90%;
+      box-shadow: 0 0 30px rgba(255,255,255,0.1);
+    }
+    #premiumAlert .box h2 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+    }
+    #premiumAlert .box p {
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+    #premiumAlert .box button {
+      padding: 10px 20px;
+      border: none;
+      background: #378f7b;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .app {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+.app:hover {
+  transform: translateY(-2px);
+}
+#appCount {
+  font-weight: bold;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+#searchContainer {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 0px 8px;
+  transition: width 0.3s ease, background 0.3s ease;
+  width: 52px; /* smaller default */
+  overflow: hidden;
+  box-shadow: 0 0 6px rgba(0,0,0,0.25);
+  backdrop-filter: blur(8px);
+}
+
+#searchContainer.expanded {
+  width: 200px; /* smaller expanded size */
+  background: rgba(255, 255, 255, 0.18);
+}
+
+#searchInput {
+  border: none;
+  background: transparent;
+  color: white;
+  outline: none;
+  width: 100%;
+  font-size: 12px;
+  padding-left: 6px;
+  caret-color: #00ffe1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+#searchContainer.expanded #searchInput {
+  opacity: 1;
+}
+
+#searchIcon {
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+  </style>
+</head>
+<body>
+  <canvas id="normsMatrix"></canvas>
+  <div class="container">
+    <h1>Hacked & Modded Apps</h1>
+    <div class="notification" id="notificationBox" style="display: none;"></div>
+    <div class="app-count" id="appCount">You own 0 apps</div>
+    <div id="searchContainer">
+  <span id="searchIcon">&#128269;</span> <!-- Unicode magnifying glass -->
+  <input type="text" id="searchInput" placeholder="Search apps..." />
+</div>
+      <div id="appsList"></div>
+  </div>
+  <div id="premiumAlert">
+    <div class="box">
+      <h2>Notification</h2>
+      <p id="premiumAlertMsg">Thanks for rating!</p>
+      <button onclick="document.getElementById('premiumAlert').style.display='none'">OK</button>
+    </div>
+  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import {
+      getFirestore, collection, getDocs, doc,
+      getDoc, updateDoc, deleteDoc
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import {
+      getAuth, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+    // ✅ REPLACE WITH YOUR FIREBASE CONFIG
+    const firebaseConfig = {
+     apiKey: "AIzaSyBCZOF7uAxlygOk1ydwSP-j3BiYzyxulf4",
+  authDomain: "black-market-b6eee.firebaseapp.com",
+  projectId: "black-market-b6eee",
+  storageBucket: "black-market-b6eee.appspot.com",
+  messagingSenderId: "537330859830",
+  appId: "1:537330859830:web:1db4f16f760940f17c3d97"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth();
+
+    let userId = "";
+    let ownedApps = [];
+
+    const appsList = document.getElementById("appsList");
+    const appCount = document.getElementById("appCount");
+    const notificationBox = document.getElementById("notificationBox");
+    
+    onAuthStateChanged(auth, async user => {
+      if (user) {
+        userId = user.uid;
+        await loadApps();
+        await checkNotifications();
+      } else {
+        appsList.innerHTML = "<p>Please log in to view apps.</p>";
+      }
+    });
+    
+    async function loadApps() {
+      const userDoc = await getDoc(doc(db, "users", userId));
+      ownedApps = userDoc.exists() && userDoc.data().ownedApps || [];
+
+      const appsSnapshot = await getDocs(collection(db, "apps"));
+      let count = 0;
+      
+      
+      appsList.innerHTML = "";
+      appsSnapshot.forEach(docSnap => {
+        const app = docSnap.data();
+        const isOwned = ownedApps.includes(docSnap.id);
+        const isAdmin = userDoc.data().role === "admin";
+
+        const div = document.createElement("div");
+        div.className = "app";
+        
+        div.innerHTML = `
+<img src="${app.icon}" alt="${app.title}" loading="lazy"
+ style="width: 100%; height: 180px; border-radius: 12px; object-fit: cover; margin-bottom: 15px;" />
+
+  <h3 style="margin: 4px 0;">${app.title}</h3>
+  <p>Size: ${app.size} MB</p>
+  <p>${app.description || ""}</p>
+
+ <button class="btn ${isOwned ? "btn-own" : ""}">
+  ${isOwned ? "Download" : app.price === 0 ? "Free" : `Buy (${app.price})`}
+</button>
+
+  <div class="star-rating" data-id="${docSnap.id}" style="margin-top: 6px;">
+    ${[1, 2, 3, 4, 5].map(n => `<span class="star" data-star="${n}">&#9733;</span>`).join('')}
+  </div>
+
+  <div class="average-rating" id="avg-${docSnap.id}" style="margin-top: 6px; font-size: 0.95rem; color: #ccc;">
+    Loading rating...
+  </div>
+       ${isAdmin ? `<div class="admin-controls">
+              <button class="btn" onclick="editApp('${docSnap.id}')">Edit</button>
+              <button class="btn" onclick="deleteApp('${docSnap.id}')">Delete</button>
+          </div>` : ""}
+        `;
+        const button = div.querySelector("button");
+button.addEventListener("click", () => {
+  if (isOwned) {
+    downloadApp(app.download);
+  } else {
+    buyApp(docSnap.id, app.price, app.download);
+  }
+});
+        appsList.appendChild(div);
+
+        count += isOwned ? 1 : 0;
+      });
+      
+      appCount.textContent = `You own ${count} app${count !== 1 ? "s" : ""}`;
+
+// Apply styling
+appCount.style.fontWeight = "bold";
+appCount.style.transition = "color 0.3s ease, transform 0.3s ease";
+
+// Set color and animation based on count
+if (count === 0) {
+  appCount.style.color = "red";
+  appCount.style.transform = "scale(1.1)";
+} else {
+  appCount.style.color = "green";
+  appCount.style.transform = "scale(1.1)";
+}
+
+// Reset scale after animation (optional but clean)
+setTimeout(() => {
+  appCount.style.transform = "scale(1)";
+}, 300);
+      await initRatingEvents(); // make it await
+    }
+    
+    window.downloadApp = (link) => {
+      window.open(link, "_blank");
+    }
+
+    window.buyApp = async (appId, price, downloadLink) => {
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+      const balance = userSnap.data().balance;
+      
+      if (Number(balance) >= Number(price)) {
+        const newBalance = balance - price;
+        const updatedOwned = [...(userSnap.data().ownedApps || []), appId];
+        await updateDoc(userRef, {
+          balance: newBalance,
+          ownedApps: updatedOwned
+        });
+        showPremiumAlert("Purchase successful!");
+        window.location.reload();
+      } else {
+        alert("Insufficient balance.");
+      }
+    }
+
+window.editApp = (id) => {
+      alert("Edit logic not added yet for course ID: " + id);
+    }
+
+    window.deleteApp = async (id) => {
+      if (confirm("Are you sure you want to delete this course?")) {
+        await deleteDoc(doc(db, "apps", id));
+        alert("Deleted.");
+        window.location.reload();
+      }
+    }
+    
+    async function loadUserRating() {
+  const appSnap = await getDoc(appRef);
+  const appData = appSnap.data();
+
+  const userRating = appData.feedback?.[userId];
+  
+  if (userRating) {
+    const stars = document.querySelectorAll(".star");
+    stars.forEach(star => {
+      const starVal = Number(star.getAttribute("data-star"));
+      if (starVal <= userRating) {
+        star.classList.add("selected");
+      } else {
+        star.classList.remove("selected");
+      }
+    });
+  }
+}
+
+async function initRatingEvents() {
+  const appElems = document.querySelectorAll(".star-rating");
+
+  for (const rating of appElems) {
+    const appId = rating.getAttribute("data-id");
+    const appRef = doc(db, "apps", appId);
+    const appSnap = await getDoc(appRef);
+    const feedback = appSnap.data().feedback || {};
+
+    const userRating = feedback[userId] || 0;
+    const stars = rating.querySelectorAll(".star");
+
+    // Highlight user's previous rating
+    stars.forEach(star => {
+      const val = Number(star.getAttribute("data-star"));
+      if (val <= userRating) {
+        star.classList.add("selected");
+      } else {
+        star.classList.remove("selected");
+      }
+    });
+
+    // Rating click event
+    stars.forEach(star => {
+      star.addEventListener("click", async () => {
+        const val = Number(star.getAttribute("data-star"));
+
+        // Check ownership
+        const userRef = doc(db, "users", userId);
+        const userSnap = await getDoc(userRef);
+        const ownedApps = userSnap.data()?.ownedApps || [];
+
+        if (!ownedApps.includes(appId)) {
+          showPremiumAlert("You must purchase this app before rating it.");
+          return;
+        }
+
+        await updateDoc(appRef, {
+          [`feedback.${userId}`]: val
+        });
+
+        showPremiumAlert("Thanks for rating this app!");
+
+        // Refresh stars
+        stars.forEach(s => s.classList.remove("selected"));
+        stars.forEach(s => {
+          if (Number(s.getAttribute("data-star")) <= val) {
+            s.classList.add("selected");
+          }
+        });
+
+        updateAverage(appRef, `avg-${appId}`);
+      });
+    });
+
+    updateAverage(appRef, `avg-${appId}`);
+  }
+}
+
+async function updateAverage(appRef, avgElemId) {
+  const avgElem = document.getElementById(avgElemId);
+  const snap = await getDoc(appRef);
+  const feedback = snap.data().feedback || {};
+  const ratings = Object.values(feedback);
+
+  if (ratings.length === 0) {
+    avgElem.textContent = "No ratings yet.";
+    return;
+  }
+  
+  const sum = ratings.reduce((a, b) => a + b, 0);
+  const avg = (sum / ratings.length).toFixed(1);
+  avgElem.textContent = `★ ${avg} (${ratings.length} rating${ratings.length !== 1 ? "s" : ""})`;
+}
+
+async function checkNotifications() {
+      const notifRef = doc(db, "notifications", "apps");
+      const notifSnap = await getDoc(notifRef);
+      if (notifSnap.exists()) {
+        const notif = notifSnap.data().message;
+        if (notif) {
+          notificationBox.style.display = "block";
+          notificationBox.textContent = notif;
+        }
+      }
+    }
+    
+    function showPremiumAlert(msg) {
+  const alertBox = document.getElementById("premiumAlert");
+  document.getElementById("premiumAlertMsg").textContent = msg;
+  alertBox.style.display = "flex";
+}
+
+const searchContainer = document.getElementById('searchContainer');
+  const searchInput = document.getElementById('searchInput');
+  const searchIcon = document.getElementById('searchIcon');
+
+  // Expand on focus or icon click
+  searchInput.addEventListener('focus', () => {
+    searchContainer.classList.add('expanded');
+  });
+  searchIcon.addEventListener('click', () => {
+    searchContainer.classList.add('expanded');
+    searchInput.focus();
+  });
+
+  // Collapse if input loses focus and empty
+  searchInput.addEventListener('blur', () => {
+    if (searchInput.value.trim() === '') {
+      searchContainer.classList.remove('expanded');
+    }
+  });
+
+  // Optional: expand on scroll near top (within 150px)
+  window.addEventListener('scroll', () => {
+    if (window.scrollY < 150) {
+      searchContainer.classList.add('expanded');
+    } else {
+      if (document.activeElement !== searchInput && searchInput.value.trim() === '') {
+        searchContainer.classList.remove('expanded');
+      }
+    }
+  });
+
+  // Implement your search logic here
+  searchInput.addEventListener('input', () => {
+    const query = searchInput.value.toLowerCase();
+    const apps = document.querySelectorAll('.app');
+    apps.forEach(app => {
+      const title = app.querySelector('h3')?.textContent.toLowerCase() || '';
+      if (title.includes(query)) {
+        app.style.display = '';
+      } else {
+        app.style.display = 'none';
+      }
+    });
+  });
+  </script>
+  <script>
+    const canvas = document.getElementById("normsMatrix");
+    const ctx = canvas.getContext("2d");
+    canvas.height = window.innerHeight;
+    canvas.width = window.innerWidth;
+    const letters = "01";
+    const fontSize = 16;
+    const columns = canvas.width / fontSize;
+    const drops = Array.from({ length: columns }).fill(1);
+    function draw() {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#00ffe1";
+      ctx.font = fontSize + "px monospace";
+      for (let i = 0; i < drops.length; i++) {
+        const text = letters.charAt(Math.floor(Math.random() * letters.length));
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+    setInterval(draw, 35);
+  </script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Boost with Black Market</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+  margin: 0;
+  padding: 0;
+font-family: 'Helvetica Neue', sans-serif;
+  background: black; /* Calm dark blue */
+  color: white;
+  /* Allow scrolling */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Matrix canvas background */
+#normsMatrix {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1; /* behind everything */
+  pointer-events: none; /* allow clicking/scrolling */
+}
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .form-container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #333;
+    }
+    input, textarea, button {
+      width: 90%;
+      margin: 10px 0;
+      padding: 12px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 5px;
+    }
+    button {
+      background: green;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #00aa00;
+    }
+    .alert {
+      background: #222;
+      padding: 15px;
+      margin-top: 15px;
+      border-left: 5px solid limegreen;
+      display: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="normsMatrix"></canvas>
+  <h1>🚨 Don't End Up Like Others</h1>
+  <h2>Boost Smartly with Black Market & Avoid Scam Plugs</h2>
+
+  <div class="form-container">
+    <form id="boostForm">
+      <label>📞 WhatsApp Number</label>
+      <input type="tel" id="whatsapp" placeholder="e.g. 08123456789" required>
+
+      <label>📝 Description of What You Want</label>
+      <textarea id="description" placeholder="What do you want to boost?" required></textarea>
+
+      <button type="submit">✅ Submit Boost Request</button>
+    </form>
+
+    <div class="alert" id="successMsg">
+      ✅ Your form has been sent to admin. Expect a WhatsApp message shortly.
+    </div>
+  </div>
+<script>
+  const canvas = document.getElementById("normsMatrix");
+  const ctx = canvas.getContext("2d");
+
+  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
+
+  const letters = "01";
+  const fontSize = 14;
+  const columns = canvas.width / fontSize;
+  const drops = Array.from({ length: columns }).fill(1);
+
+  function draw() {
+    // Translucent background to slowly fade out
+    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#00ffe1"; // Calmer cyan glow
+    ctx.font = fontSize + "px monospace";
+
+    for (let i = 0; i < drops.length; i++) {
+      const text = letters.charAt(Math.floor(Math.random() * letters.length));
+      ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+  }
+
+  setInterval(draw, 35);
+</script>
+  <script>
+    const botToken = "7696171779:AAFdbNm5zu63Gmyw3Or8-HDOjlLxGzAojAM";
+    const chatId = "-1002817869617";
+
+    document.getElementById("boostForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const number = document.getElementById("whatsapp").value.trim();
+      const desc = document.getElementById("description").value.trim();
+
+      const text = `📨 *New Boost Request*%0A📞 WhatsApp: ${number}%0A📝 Description: ${desc}`;
+
+      const url = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${text}&parse_mode=Markdown`;
+
+      try {
+        await fetch(url);
+        document.getElementById("boostForm").reset();
+        document.getElementById("successMsg").style.display = "block";
+      } catch (err) {
+        alert("❌ Failed to send. Please try again.");
+        console.error("Telegram Error:", err);
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Boost with Black Market</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: 'Helvetica Neue', sans-serif;
+      padding: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .form-container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #333;
+    }
+    input, textarea, button {
+      width: 90%;
+      margin: 10px 0;
+      padding: 12px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 5px;
+    }
+    button {
+      background: green;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #00aa00;
+    }
+    .alert {
+      background: #222;
+      padding: 15px;
+      margin-top: 15px;
+      border-left: 5px solid limegreen;
+      display: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🚨 Don't End Up Like Others</h1>
+  <h2>Boost Smartly with Black Market & Avoid Scam Plugs</h2>
+
+  <div class="form-container">
+    <form id="boostForm">
+      <label>📞 WhatsApp Number</label>
+      <input type="tel" id="whatsapp" placeholder="e.g. 08123456789" required>
+
+      <label>📝 Description of What You Want</label>
+      <textarea id="description" placeholder="What do you want to boost?" required></textarea>
+
+      <button type="submit">✅ Submit Boost Request</button>
+    </form>
+
+    <div class="alert" id="successMsg">
+      ✅ Your form has been sent to admin. Expect a WhatsApp message shortly.
+    </div>
+  </div>
+
+  <script>
+    const botToken = "7696171779:AAFdbNm5zu63Gmyw3Or8-HDOjlLxGzAojAM";
+    const chatId = "-1002817869617";
+
+    document.getElementById("boostForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const number = document.getElementById("whatsapp").value.trim();
+      const desc = document.getElementById("description").value.trim();
+
+      const text = `📨 *New Boost Request*%0A📞 WhatsApp: ${number}%0A📝 Description: ${desc}`;
+
+      const url = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${text}&parse_mode=Markdown`;
+
+      try {
+        await fetch(url);
+        document.getElementById("boostForm").reset();
+        document.getElementById("successMsg").style.display = "block";
+      } catch (err) {
+        alert("❌ Failed to send. Please try again.");
+        console.error("Telegram Error:", err);
+      }
+    });
+  </script>
+
+</body>
+</html>

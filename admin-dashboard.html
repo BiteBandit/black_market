@@ -1,0 +1,1092 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard | Black Market</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Helvetica+Neue:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Lora&family=Poppins&display=swap');
+        :root {
+      --base-bgcolor: black;
+      --base-color: #354152;
+      --base-font-weight: 300;
+      --base-font-size: 1rem;
+      --base-line-height: 1.5;
+      --base-font-family: 'Helvetica Neue', sans-serif;
+      --input-bg: #f0f0f0;
+      --input-border: black;
+      --input-border-focus: black;
+      --error-color: #e74c3c;
+      --success-color: #2ecc71;
+    }
+    body {
+      font: var(--base-font-weight) var(--base-font-size)/var(--base-line-height) var(--base-font-family);
+      background: var(--base-bgcolor);
+      color: #fff;
+      padding: 20px;
+    }
+    #normsMatrix {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1; /* behind everything */
+  pointer-events: none; /* allow clicking/scrolling */
+}
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #444;
+}
+
+nav button {
+  flex: 1 0 auto;
+  padding: 10px 15px;
+  border: none;
+  background: #222;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+nav button.active {
+  background: #000;
+}
+nav {
+  scroll-behavior: smooth;
+}
+    .section {
+      display: none;
+    }
+    .section.active {
+      display: block;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      background: #1a1a1a;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 5px;
+    }
+    label {
+      margin-top: 10px;
+      display: block;
+    }
+    .user-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 10px;
+    }
+    .user-card button {
+      width: auto;
+      margin-top: 10px;
+      margin-right: 10px;
+    }
+    #searchUser {
+      max-width: 400px;
+      margin: 0 auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+   <canvas id="normsMatrix"></canvas>
+  <h1>👑 Admin Dashboard</h1>
+<nav>
+  <button class="tab active" data-target="notifications">Send Notification</button>
+  <button class="tab" data-target="tools">Manage Tools & Scripts</button>
+  <button class="tab" data-target="addCourse">Add Course</button>
+  <button class="tab" data-target="addApp">Add Apps</button>
+  <button class="tab" data-target="premium">Manage Premium</button>
+  <button class="tab" data-target="users">Manage Users</button>
+  <button class="tab" data-target="userlist">View All Users</button>
+  <button class="tab" data-target="approvals">Approve Listings</button>
+  <button class="tab" data-target="approved">Approved Listings</button>
+<button class="tab" data-target="rejected">Rejected Listings</button>
+<button class="tab" data-target="analytics">Analytics</button>
+<button class="tab" data-target="vcfManager">Manage VCF Files</button>
+<button class="tab" data-target="manageAds">Manage Ads</button>
+</nav><div id="notifications" class="section active">
+  <h2>Send Notification</h2>
+  <form id="notifForm">
+    <label>Message</label>
+    <textarea id="notifMsg" required></textarea>
+    <label>Type</label>
+    <select id="notifType">
+      <option value="">Select</option>
+      <option value="info">Info</option>
+      <option value="warning">Warning</option>
+      <option value="error">Error</option>
+    </select>
+    <label>Send to</label>
+    <select id="notifTarget">
+      <option value="all">All Users</option>
+      <option value="role">By Role</option>
+      <option value="user">Single User (UID)</option>
+    </select>
+    <input type="text" id="notifExtra" placeholder="Enter UID or role (if selected above)" />
+    <button type="submit">Send</button>
+  </form>
+</div><div id="premium" class="section">
+  <h2>Manage Premium</h2>
+  <form id="premiumForm">
+    <label>User UID</label>
+    <input type="text" id="premiumUid" required />
+    <label>Premium Status</label>
+    <select id="premiumStatus">
+      <option value="yes">Grant Premium</option>
+      <option value="no">Remove Premium</option>
+    </select>
+    <label>Premium Expiry Date</label>
+    <input type="date" id="premiumDate" />
+    <button type="submit">Update Premium</button>
+  </form>
+</div><div id="users" class="section">
+  <h2>Manage Users</h2>
+  <form id="disableForm">
+    <label>User UID</label>
+    <input type="text" id="disableUid" required />
+    <label>Account Status</label>
+    <select id="disableStatus">
+      <option value="active">Enable</option>
+      <option value="disabled">Disable</option>
+    </select>
+    <button type="submit">Update User</button>
+  </form>
+</div><div id="userlist" class="section">
+  <h2>All Users</h2>
+  <input type="text" id="searchUser" placeholder="Search by email or UID..." />
+  <div id="userResults"></div>
+</div><div id="approvals" class="section">
+  <h2>Pending Buy & Sell Listings</h2>
+  <div id="pendingListings"></div>
+</div>
+<div id="approved" class="section">
+  <h2>Approved Listings</h2>
+  <div id="approvedListings"></div>
+</div>
+
+<div id="rejected" class="section">
+  <h2>Rejected Listings</h2>
+  <div id="rejectedListings"></div>
+</div>
+
+<div id="vcfManager" class="section">
+  <h2>📂 Upload VCF File</h2>
+  <form id="vcfUploadForm">
+    <label>File Title</label>
+    <input type="text" id="vcfTitle" required />
+
+    <label>Contact Count</label>
+    <input type="number" id="vcfCount" required />
+
+    <label>Price (₦)</label>
+    <input type="number" id="vcfPrice" placeholder="Enter 0 for Free" required />
+
+    <label>Google Drive Link</label>
+    <input type="url" id="vcfDriveLink" required />
+
+    <button type="submit">Upload VCF File</button>
+  </form>
+  <div id="vcfUploadStatus" style="margin-top: 10px;"></div>
+</div>
+
+<div id="analytics" class="section">
+  <h2>Site Analytics</h2>
+  <div id="analyticsContent">
+    <!-- You can put charts or summaries here -->
+    <p>Coming soon...</p>
+  </div>
+</div>
+<div id="manageAds" class="section">
+  <h2>📢 Post New Ad</h2>
+  <form id="adForm">
+    <label>Ad Title</label>
+    <input type="text" id="adTitle" required />
+
+    <label>Description</label>
+    <textarea id="adDescription" rows="3" required></textarea>
+
+    <label>Ad Type</label>
+    <select id="adType" required>
+      <option value="">-- Select --</option>
+      <option value="channel">Channel</option>
+      <option value="group">Group</option>
+      <option value="contact">Contact</option>
+      <option value="website">Website</option>
+    </select>
+
+    <label>URL</label>
+    <input type="url" id="adLink" required />
+
+    <label>Photo/Video</label>
+    <input type="file" id="mediaUpload" accept="image/*,video/*" required />
+
+    <label>Auto Delete After</label>
+    <select id="expiryDays">
+      <option value="1">1 Day</option>
+      <option value="3" selected>3 Days</option>
+      <option value="7">7 Days</option>
+    </select>
+
+    <button type="submit">Post Ad</button>
+  </form>
+</div>
+<div id="addCourse" class="section">
+  <h2>Add New Course</h2>
+  <form id="addCourseForm">
+    <label>
+      Title:
+      <input type="text" id="courseTitle" required>
+    </label>
+
+    <label>
+      Size (MB):
+      <input type="number" id="courseSize" min="0" required>
+    </label>
+
+    <label>
+      Description:
+      <textarea id="courseDescription" rows="3"></textarea>
+    </label>
+
+    <label>
+      Price:
+      <input type="number" id="coursePrice" min="0" required>
+    </label>
+
+    <label>
+      Download Link:
+      <input type="url" id="courseDownload" required>
+    </label>
+
+    <label>
+      Target Role:
+      <select id="courseRole" required>
+        <option value="">-- Select Role --</option>
+        <option value="norm">Norm</option>
+        <option value="techie">Techie</option>
+        <option value="fraud">Fraud</option>
+        <option value="admin">Admin</option>
+        <option value="all">All Users</option>
+      </select>
+    </label>
+
+    <button type="submit">Add Course</button>
+  </form>
+  <div id="addCourseMessage" style="margin-top: 10px;"></div>
+</div>
+<div id="addApp" class="section">
+  <h2>Add New App</h2>
+  <form id="addAppForm">
+    <label>
+      App Title:
+      <input type="text" id="appTitle" required>
+    </label>
+
+    <label>
+      Size (MB):
+      <input type="number" id="appSize" min="0" required>
+    </label>
+
+    <label>
+      Description:
+      <textarea id="appDescription" rows="3"></textarea>
+    </label>
+
+    <label>
+      Price:
+      <input type="number" id="appPrice" min="0" required>
+    </label>
+
+    <label>
+      Download Link:
+      <input type="url" id="appDownload" required>
+    </label>
+
+    <label>
+      Target Role:
+      <select id="appRole" required>
+        <option value="">-- Select Role --</option>
+        <option value="norm">Norm</option>
+        <option value="techie">Techie</option>
+        <option value="fraud">Fraud</option>
+        <option value="admin">Admin</option>
+        <option value="all">All Users</option>
+      </select>
+    </label>
+
+    <label>
+      App Icon (URL):
+      <input type="url" id="appIcon" placeholder="https://...icon.png" required>
+    </label>
+
+    <button type="submit">Add App</button>
+  </form>
+
+  <div id="addAppMessage" style="margin-top: 10px;"></div>
+</div>
+
+<div id="tools" class="tab-content" style="display:none;">
+  <h2>Manage Tools & Scripts</h2>
+  
+  <form id="toolForm">
+    <label>Tool Title:</label>
+    <input type="text" id="toolTitle" required>
+
+    <label>Description:</label>
+    <textarea id="toolDescription" required></textarea>
+
+    <label>Image File:</label>
+    <input type="file" id="toolImageFile" accept="image/*" required>
+    <input type="hidden" id="toolImage">
+    <div id="uploadedImagePreview"></div>
+
+    <label>Referrals Required to Unlock:</label>
+    <input type="number" id="toolReferrals" min="0" value="0" required>
+
+    <label>Download Link:</label>
+    <input type="url" id="toolDownload" required>
+
+    <div id="toolMessage" style="margin-top:10px; color:#0f0;"></div>
+    <button type="submit">Add Tool</button>
+  </form>
+
+  <hr>
+  <div id="toolsList"></div>
+</div>
+<script>
+  
+  const firebaseConfig = {
+    apiKey: "AIzaSyBCZOF7uAxlygOk1ydwSP-j3BiYzyxulf4",
+    authDomain: "black-market-b6eee.firebaseapp.com",
+    projectId: "black-market-b6eee",
+    storageBucket: "black-market-b6eee.appspot.com",
+    messagingSenderId: "537330859830",
+    appId: "1:537330859830:web:1db4f16f760940f17c3d97"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  auth.onAuthStateChanged(async user => {
+  if (!user) return location.href = "login.html";
+  const doc = await db.collection("users").doc(user.uid).get();
+  if (!doc.exists || doc.data().role !== "admin") {
+    alert("Access denied");
+    location.href = "dashboard.html";
+  } else {
+    loadUserList();
+    loadPendingListings();
+     loadApprovedListings(); // ✅
+    loadRejectedListings(); // ✅
+    loadAnalytics(); // ✅
+  }
+});
+
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.target).classList.add("active");
+  };
+});
+
+document.getElementById("notifForm").onsubmit = async e => {
+  e.preventDefault();
+  const msg = document.getElementById("notifMsg").value;
+  const type = document.getElementById("notifType").value;
+  const target = document.getElementById("notifTarget").value;
+  const extra = document.getElementById("notifExtra").value.trim();
+
+  const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+  const notif = { message: msg, type, createdAt: timestamp, read: false };
+
+  if (target === "all") {
+    const users = await db.collection("users").get();
+    users.forEach(u => db.collection("users").doc(u.id).collection("notifications").add(notif));
+  } else if (target === "role") {
+    const users = await db.collection("users").where("role", "==", extra).get();
+    users.forEach(u => db.collection("users").doc(u.id).collection("notifications").add(notif));
+  } else if (target === "user") {
+    await db.collection("users").doc(extra).collection("notifications").add(notif);
+  }
+
+  alert("Notification sent!");
+  e.target.reset();
+};
+
+document.getElementById("premiumForm").onsubmit = async e => {
+  e.preventDefault();
+  const uid = document.getElementById("premiumUid").value;
+  const status = document.getElementById("premiumStatus").value;
+  const expiry = document.getElementById("premiumDate").value;
+  const update = { premium: status };
+  if (expiry) update.premiumExpiry = firebase.firestore.Timestamp.fromDate(new Date(expiry));
+  await db.collection("users").doc(uid).update(update);
+  alert("Premium updated!");
+  e.target.reset();
+};
+
+document.getElementById("disableForm").onsubmit = async e => {
+  e.preventDefault();
+  const uid = document.getElementById("disableUid").value;
+  const status = document.getElementById("disableStatus").value;
+  await db.collection("users").doc(uid).update({ status });
+  alert("User status updated!");
+  e.target.reset();
+};
+
+async function loadUserList() {
+  const container = document.getElementById("userResults");
+  const snapshot = await db.collection("users").get();
+  const users = [];
+  snapshot.forEach(doc => {
+    users.push({ uid: doc.id, data: doc.data() });
+  });
+
+  const render = (filtered) => {
+    container.innerHTML = "";
+    filtered.forEach(({ uid, data }) => {
+      container.innerHTML += `
+        <div class="user-card">
+          <strong>${data.email || "No Email"}</strong><br/>
+          UID: ${uid}<br/>
+          Role: ${data.role || "none"}<br/>
+          Balance: ₦${data.balance || "0.00"}<br/>
+          <button onclick="topUpBalance('${uid}')">Top Up</button>
+        </div>`;
+    });
+  };
+
+  render(users);
+
+  document.getElementById("searchUser").oninput = e => {
+    const value = e.target.value.toLowerCase();
+    const filtered = users.filter(u =>
+      u.uid.toLowerCase().includes(value) ||
+      (u.data.email && u.data.email.toLowerCase().includes(value))
+    );
+    render(filtered);
+  };
+}
+
+async function topUpBalance(uid) {
+  const amount = prompt("Enter amount to top up:");
+  if (!amount || isNaN(amount)) return alert("Invalid amount");
+
+  const ref = db.collection("users").doc(uid);
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const current = parseFloat(snap.data().balance || 0);
+    tx.update(ref, { balance: current + parseFloat(amount) });
+  });
+
+  alert("Balance topped up!");
+  loadUserList();
+}
+
+async function loadPendingListings() {
+  const container = document.getElementById("pendingListings");
+  container.innerHTML = "Loading...";
+
+  try {
+    const snap = await db.collection("accounts-for-sale")
+      .where("status", "==", "pending")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    console.log(`📦 Listings fetched: ${snap.size}`);
+
+    if (snap.empty) {
+      container.innerHTML = "<p>No pending listings</p>";
+      return;
+    }
+
+    container.innerHTML = "";
+    snap.forEach(doc => {
+      const d = doc.data();
+      console.log("✅ Listing found:", d);
+
+      container.innerHTML += `
+        <div class="user-card">
+          <strong>Platform:</strong> ${d.platform}<br>
+          <strong>Preview:</strong> <a href="${d.previewLink}" target="_blank">${d.previewLink}</a><br>
+          <strong>Followers:</strong> ${d.followers}<br>
+          <strong>Price:</strong> ₦${d.price}<br>
+          <strong>Description:</strong> ${d.description || "N/A"}<br>
+          <strong>UID:</strong> ${d.uid}<br>
+          <img src="${d.screenshot}" alt="proof" style="width: 100%; margin-top: 10px; border-radius: 8px;" /><br/>
+          <button onclick="approveListing('${doc.id}')">✅ Approve</button>
+          <button onclick="rejectListing('${doc.id}')">❌ Reject</button>
+        </div>
+      `;
+    });
+
+} catch (err) {
+  console.error("❌ Error loading listings:", err.message || err);
+  console.error(err.stack); // shows full error trace
+  container.innerHTML = `<p style="color:red">Error loading listings. Check console.</p>`;
+  }
+}
+
+async function approveListing(id) {
+  const docRef = db.collection("accounts-for-sale").doc(id);
+  const snap = await docRef.get();
+  const data = snap.data();
+
+  await docRef.update({ status: "approved" });
+
+  const notif = {
+    message: `✅ Your ${data.platform} account listing has been approved.`,
+    type: "info",
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    read: false
+  };
+  await db.collection("users").doc(data.uid).collection("notifications").add(notif);
+
+  alert("Listing approved and user notified!");
+  loadPendingListings();
+}
+
+async function rejectListing(id) {
+  const reason = prompt("Why are you rejecting this?");
+  const docRef = db.collection("accounts-for-sale").doc(id);
+  const snap = await docRef.get();
+  const data = snap.data();
+
+  await docRef.update({ status: "rejected", rejectionReason: reason });
+
+  const notif = {
+    message: `❌ Your ${data.platform} account listing was rejected.\nReason: ${reason || "No reason given"}`,
+    type: "error",
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    read: false
+  };
+  await db.collection("users").doc(data.uid).collection("notifications").add(notif);
+
+  alert("Listing rejected and user notified!");
+  loadPendingListings();
+}
+async function loadApprovedListings() {
+  const container = document.getElementById("approvedListings");
+  container.innerHTML = "Loading...";
+  try {
+    const snap = await db.collection("accounts-for-sale")
+      .where("status", "==", "approved")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    if (snap.empty) return container.innerHTML = "<p>No approved listings</p>";
+
+    container.innerHTML = "";
+    snap.forEach(doc => {
+      const d = doc.data();
+      container.innerHTML += `
+        <div class="user-card">
+          <strong>Platform:</strong> ${d.platform}<br>
+          <strong>Price:</strong> ₦${d.price}<br>
+          <strong>UID:</strong> ${d.uid}<br>
+          <img src="${d.screenshot}" alt="proof" style="width: 100%; margin-top: 10px; border-radius: 8px;" /><br/>
+        </div>
+      `;
+    });
+  } catch (err) {
+    console.error("❌ Error loading approved listings:", err);
+    container.innerHTML = `<p style="color:red">Error loading approved listings. Check console.</p>`;
+  }
+}
+async function loadRejectedListings() {
+  const container = document.getElementById("rejectedListings");
+  container.innerHTML = "Loading...";
+  try {
+    const snap = await db.collection("accounts-for-sale")
+      .where("status", "==", "rejected")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    if (snap.empty) return container.innerHTML = "<p>No rejected listings</p>";
+
+    container.innerHTML = "";
+    snap.forEach(doc => {
+      const d = doc.data();
+      container.innerHTML += `
+        <div class="user-card">
+          <strong>Platform:</strong> ${d.platform}<br>
+          <strong>Price:</strong> ₦${d.price}<br>
+          <strong>UID:</strong> ${d.uid}<br>
+          <strong>Reason:</strong> ${d.rejectionReason || "No reason"}<br>
+          <img src="${d.screenshot}" alt="proof" style="width: 100%; margin-top: 10px; border-radius: 8px;" /><br/>
+        </div>
+      `;
+    });
+  } catch (err) {
+    console.error("❌ Error loading rejected listings:", err);
+    container.innerHTML = `<p style="color:red">Error loading rejected listings. Check console.</p>`;
+  }
+}
+async function loadAnalytics() {
+  const container = document.getElementById("analyticsContent");
+  container.innerHTML = "Loading stats...";
+
+  try {
+    const usersSnap = await db.collection("users").get();
+
+    let totalUsers = 0;
+    let premiumUsers = 0;
+
+    // Set initial role counts to 0
+    const roleCounts = {
+      admin: 0,
+      fraud: 0,
+      norm: 0,
+      techie: 0
+    };
+
+    usersSnap.forEach(doc => {
+      const data = doc.data();
+      totalUsers++;
+
+      // Count premium
+      if (data.premium === "yes") {
+        premiumUsers++;
+      }
+
+      // Count roles
+      const role = data.role || "norm"; // default to norm if role not set
+      if (roleCounts.hasOwnProperty(role)) {
+        roleCounts[role]++;
+      }
+    });
+
+    container.innerHTML = `
+      <div class="user-card">
+        <p><strong>Total Registered Members:</strong> ${totalUsers}</p>
+        <p><strong>Total Premium Members:</strong> ${premiumUsers}</p>
+        <hr style="margin: 10px 0;" />
+        <h3>Members by Role:</h3>
+        <p>👑 <strong>Admin:</strong> ${roleCounts.admin}</p>
+        <p>🕵️‍♂️ <strong>Fraud:</strong> ${roleCounts.fraud}</p>
+        <p>👤 <strong>Norm:</strong> ${roleCounts.norm}</p>
+        <p>💻 <strong>Techie:</strong> ${roleCounts.techie}</p>
+      </div>
+    `;
+  } catch (err) {
+    console.error("❌ Error loading analytics:", err);
+    container.innerHTML = `<p style="color:red">Failed to load analytics. Check console.</p>`;
+  }
+}
+
+  const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dilffurcn/auto/upload";
+  const CLOUDINARY_UPLOAD_PRESET = "Blackmarket";
+
+  document.getElementById("adForm").onsubmit = async e => {
+    e.preventDefault();
+    const title = document.getElementById("adTitle").value.trim();
+    const description = document.getElementById("adDescription").value.trim();
+    const type = document.getElementById("adType").value;
+    const link = document.getElementById("adLink").value.trim();
+    const file = document.getElementById("mediaUpload").files[0];
+    const expiryDays = parseInt(document.getElementById("expiryDays").value);
+
+    if (!file) return alert("Please upload a media file");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+    const uploadRes = await fetch(CLOUDINARY_UPLOAD_URL, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await uploadRes.json();
+    const mediaUrl = data.secure_url;
+    const mediaType = file.type.startsWith("video") ? "video" : "image";
+
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
+
+    await db.collection("ads").add({
+      title,
+      description,
+      type,
+      link,
+      mediaUrl,
+      mediaType,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      expiryDate: firebase.firestore.Timestamp.fromDate(expiryDate)
+    });
+
+    alert("✅ Ad posted successfully!");
+    e.target.reset();
+  };
+  
+  async function autoDeleteExpiredAds() {
+    const now = new Date();
+
+    const querySnapshot = await db.collection("ads")
+      .where("expiryDate", "<", firebase.firestore.Timestamp.fromDate(now))
+      .get();
+
+    const deletePromises = [];
+    querySnapshot.forEach(doc => {
+      deletePromises.push(doc.ref.delete());
+    });
+
+    if (deletePromises.length > 0) {
+      await Promise.all(deletePromises);
+      console.log(`🧹 Deleted ${deletePromises.length} expired ad(s)`);
+    }
+  }
+
+  // Auto-delete when dashboard loads
+  autoDeleteExpiredAds();
+  
+  // Add this to your main JS file or in a <script> tag at the bottom of your admin dashboard HTML (before </body>)
+
+document.getElementById("vcfUploadForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const title = document.getElementById("vcfTitle").value.trim();
+  const count = parseInt(document.getElementById("vcfCount").value);
+  const price = parseFloat(document.getElementById("vcfPrice").value);
+  const driveLink = document.getElementById("vcfDriveLink").value.trim();
+
+  const statusBox = document.getElementById("vcfUploadStatus");
+  statusBox.textContent = "Uploading...";
+
+  try {
+    const docRef = await firebase.firestore().collection("vcf_files").add({
+      title,
+      count,
+      price,
+      driveLink,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    statusBox.textContent = `✅ Uploaded successfully (ID: ${docRef.id})`;
+    document.getElementById("vcfUploadForm").reset();
+  } catch (error) {
+    console.error("VCF Upload Error:", error);
+    statusBox.textContent = "❌ Upload failed. Try again.";
+  }
+});
+
+document.getElementById("addCourseForm").onsubmit = async (e) => {
+  e.preventDefault();
+
+  const title = document.getElementById("courseTitle").value.trim();
+  const size = Number(document.getElementById("courseSize").value);
+  const description = document.getElementById("courseDescription").value.trim();
+  const price = Number(document.getElementById("coursePrice").value);
+  const download = document.getElementById("courseDownload").value.trim();
+  const role = document.getElementById("courseRole").value;
+
+  const messageDiv = document.getElementById("addCourseMessage");
+  messageDiv.style.color = "inherit";
+  messageDiv.textContent = "";
+
+  if (!title || !size || !download || !role) {
+    messageDiv.style.color = "red";
+    messageDiv.textContent = "Please fill all required fields and select a role.";
+    return;
+  }
+
+  try {
+    const newDocRef = db.collection("courses").doc();
+
+    await newDocRef.set({
+      title,
+      size,
+      description,
+      price,
+      download,
+      role,
+      feedback: {}
+    });
+
+    // Send notifications to users with matching role
+    const usersSnapshot = await db.collection("users").where("role", "==", role).get();
+
+    const notificationPromises = usersSnapshot.docs.map((userDoc) => {
+      return db.collection("users")
+        .doc(userDoc.id)
+        .collection("notifications")
+        .add({
+          type: "new_course",
+          title: "New Course Added!",
+          message: `A new course titled "${title}" has been uploaded.`,
+createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          read: false
+        });
+    });
+
+    await Promise.all(notificationPromises);
+
+    messageDiv.style.color = "lightgreen";
+    messageDiv.textContent = "✅ Course added and notifications sent!";
+    e.target.reset();
+  } catch (error) {
+    console.error("Error adding course:", error);
+    messageDiv.style.color = "red";
+    messageDiv.textContent = "Failed to add course. Check console for errors.";
+  }
+};
+
+document.getElementById("addAppForm").onsubmit = async (e) => {
+  e.preventDefault();
+
+  const title = document.getElementById("appTitle").value.trim();
+  const size = Number(document.getElementById("appSize").value);
+  const description = document.getElementById("appDescription").value.trim();
+  const price = Number(document.getElementById("appPrice").value);
+  const download = document.getElementById("appDownload").value.trim();
+  const role = document.getElementById("appRole").value;
+  const icon = document.getElementById("appIcon").value.trim(); // <-- Added icon field
+
+  const messageDiv = document.getElementById("addAppMessage");
+  messageDiv.style.color = "inherit";
+  messageDiv.textContent = "";
+
+  if (!title || !size || !download || !role || !icon) {
+    messageDiv.style.color = "red";
+    messageDiv.textContent = "Please fill all required fields including icon.";
+    return;
+  }
+
+  try {
+    const newDocRef = db.collection("apps").doc();
+
+    await newDocRef.set({
+      title,
+      size,
+      description,
+      price,
+      download,
+      role,
+      icon, // <-- Add icon to Firestore
+      feedback: {},
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Fetch users to notify
+    let usersQuery = db.collection("users");
+    if (role !== "all") {
+      usersQuery = usersQuery.where("role", "==", role);
+    }
+
+    const usersSnapshot = await usersQuery.get();
+
+    const notificationPromises = usersSnapshot.docs.map((userDoc) => {
+      return db.collection("users")
+        .doc(userDoc.id)
+        .collection("notifications")
+        .add({
+          type: "new_app",
+          title: "New App Added!",
+          message: `A new app titled "${title}" has been uploaded.`,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          read: false
+        });
+    });
+
+    await Promise.all(notificationPromises);
+
+    messageDiv.style.color = "lightgreen";
+    messageDiv.textContent = "✅ App added and notifications sent!";
+    e.target.reset();
+  } catch (error) {
+    console.error("Error adding app:", error);
+    messageDiv.style.color = "red";
+    messageDiv.textContent = "Failed to add app. Check console for errors.";
+  }
+};
+
+// Cloudinary config
+const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dilffurcn/upload';
+const UPLOAD_PRESET = 'Blackmarket';
+
+const toolImageFile = document.getElementById('toolImageFile');
+const toolImageInput = document.getElementById('toolImage');
+const uploadedImagePreview = document.getElementById('uploadedImagePreview');
+const toolMessage = document.getElementById('toolMessage');
+const toolsList = document.getElementById('toolsList');
+
+// Upload image to Cloudinary
+toolImageFile.addEventListener('change', async () => {
+  const file = toolImageFile.files[0];
+  if (!file) return;
+  toolMessage.textContent = "Uploading image...";
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', UPLOAD_PRESET);
+  formData.append('folder', 'tools_images');
+
+  try {
+    const res = await fetch(CLOUDINARY_URL, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.secure_url) {
+      toolImageInput.value = data.secure_url;
+      uploadedImagePreview.innerHTML = `<img src="${data.secure_url}" alt="Tool Image" style="max-width:150px; border-radius:8px; margin-top:10px;" />`;
+      toolMessage.textContent = "Image uploaded successfully!";
+    } else {
+      toolMessage.textContent = "Image upload failed.";
+    }
+  } catch (err) {
+    console.error(err);
+    toolMessage.textContent = "Error uploading image.";
+  }
+});
+
+// Firestore: Add tool
+document.getElementById('toolForm').addEventListener('submit', async e => {
+  e.preventDefault();
+
+  const title = document.getElementById('toolTitle').value.trim();
+  const description = document.getElementById('toolDescription').value.trim();
+  const referralsRequired = parseInt(document.getElementById('toolReferrals').value);
+  const downloadLink = document.getElementById('toolDownload').value.trim();
+  const image = toolImageInput.value;
+
+  if (!title || !description || !downloadLink || !image || isNaN(referralsRequired)) {
+    alert('Please fill all fields correctly and upload an image.');
+    return;
+  }
+
+  try {
+    await db.collection('tools').add({
+      title,
+      description,
+      referralsRequired,
+      downloadLink,
+      image,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toolMessage.style.color = '#0f0';
+    toolMessage.textContent = 'Tool added successfully!';
+    e.target.reset();
+    toolImageInput.value = '';
+    uploadedImagePreview.innerHTML = '';
+    loadToolsList();
+  } catch (err) {
+    console.error('Error adding tool:', err);
+    alert('Failed to add tool.');
+  }
+});
+
+// Load tools for admin list
+async function loadToolsList() {
+  toolsList.innerHTML = 'Loading tools...';
+  try {
+    const snap = await db.collection('tools').orderBy('createdAt', 'desc').get();
+    if (snap.empty) {
+      toolsList.innerHTML = '<p>No tools found.</p>';
+      return;
+    }
+
+    toolsList.innerHTML = '';
+    snap.forEach(doc => {
+      const data = doc.data();
+      toolsList.innerHTML += `
+        <div class="user-card" style="background:#222; padding:10px; border-radius:8px; margin-bottom: 15px;">
+          <strong>${data.title}</strong><br/>
+          <img src="${data.image}" alt="${data.title}" style="max-width:150px; margin-top:10px; border-radius:8px;" /><br/>
+          <p>${data.description}</p>
+          <p><strong>Referrals Required:</strong> ${data.referralsRequired}</p>
+          <p><a href="${data.downloadLink}" target="_blank" style="color: #d3af37;">Download Link</a></p>
+          <button onclick="deleteTool('${doc.id}')">Delete Tool</button>
+        </div>
+      `;
+    });
+  } catch (err) {
+    console.error('Error loading tools:', err);
+    toolsList.innerHTML = '<p style="color:red">Failed to load tools.</p>';
+  }
+}
+
+// Delete tool
+async function deleteTool(id) {
+  if (!confirm('Are you sure you want to delete this tool?')) return;
+  try {
+    await db.collection('tools').doc(id).delete();
+    alert('Tool deleted successfully!');
+    loadToolsList();
+  } catch (err) {
+    console.error('Error deleting tool:', err);
+    alert('Failed to delete tool.');
+  }
+}
+
+document.querySelectorAll(".tab").forEach(button => {
+  button.addEventListener("click", () => {
+    const targetId = button.getAttribute("data-target");
+
+    // Hide all tabs
+    document.querySelectorAll(".tab-content").forEach(tab => {
+      tab.style.display = "none";
+    });
+
+    // Show the target tab
+    document.getElementById(targetId).style.display = "block";
+  });
+});
+
+const canvas = document.getElementById("normsMatrix");
+const ctx = canvas.getContext("2d");
+canvas.height = window.innerHeight;
+canvas.width = window.innerWidth;
+const letters = "01";
+const fontSize = 16;
+const columns = canvas.width / fontSize;
+const drops = Array.from({ length: columns }).fill(1);
+
+// Array of colors to randomly pick from
+const colors = ["#0f0", "#00ffe1", "#00ff99"];
+
+function draw() {
+  ctx.fillStyle = "rgba(10, 10, 35, 0.05)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = fontSize + "px monospace";
+  
+  for (let i = 0; i < drops.length; i++) {
+    // Pick a random color from the colors array for each letter
+    ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+    
+    const text = letters.charAt(Math.floor(Math.random() * letters.length));
+    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+      drops[i] = 0;
+    }
+    drops[i]++;
+  }
+}
+
+setInterval(draw, 35);
+</script></body>
+</html>

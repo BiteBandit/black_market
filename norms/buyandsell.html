@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buy & Sell - Black Market</title>
+  <link href="https://fonts.googleapis.com/css2?family=Helvetica+Neue:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Helvetica', Sans-Serif;
+  background: black; /* Calm dark blue */
+  color: white;
+  /* Allow scrolling */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+     #matrix {
+position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1; /* behind everything */
+  pointer-events: none; /* allow clicking/scrolling */
+}
+
+* {
+  color: white;
+}
+
+    h1 { text-align: center; margin-bottom: 1rem; }
+    .form-box, .listing-box {
+      background: #1a1a1a;
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    label, input, textarea, select, button {
+      display: block;
+      width: 99%;
+      margin-bottom: 10px;
+    }
+    input, select, textarea {
+      padding: 10px;
+      background: #111;
+      border: 1px solid #444;
+      color: white;
+      border-radius: 6px;
+    }
+    button {
+      background: #378f7b;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .listing {
+      border-bottom: 1px solid #333;
+      padding: 10px 0;
+    }
+    .listing img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    .terms {
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-top: 10px;
+    }
+
+    #customAlert {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    #customAlert .box {
+      background: #1c1c1c;
+      padding: 30px;
+      border-radius: 12px;
+      color: white;
+      text-align: center;
+      max-width: 90%;
+      box-shadow: 0 0 30px rgba(255,255,255,0.1);
+    }
+    #customAlert .box button {
+      padding: 10px 20px;
+      border: none;
+      background: #378f7b;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+    <canvas id="matrix"></canvas>
+<body>
+  <h1>🛒 Buy & Sell Social Media Accounts</h1>
+
+  <div class="form-box">
+    <h2>Post an Account for Sale</h2>
+    <form id="sellForm">
+      <label>Platform</label>
+      <select id="platform">
+        <option value="Instagram">Instagram</option>
+        <option value="TikTok">TikTok</option>
+        <option value="Facebook">Facebook</option>
+        <option value="Twitter">Twitter</option>
+        <option value="YouTube">YouTube</option>
+      </select>
+
+      <label>Account Preview Link</label>
+      <input type="url" id="previewLink" placeholder="https://instagram.com/example" required />
+
+      <label>Followers</label>
+      <input type="number" id="followers" placeholder="Number of followers" required />
+
+      <label>Price (₦)</label>
+      <input type="number" id="price" placeholder="How much?" required />
+
+      <label>Description</label>
+      <textarea id="description" placeholder="Tell buyers more about the account" rows="3" required></textarea>
+
+      <label>WhatsApp Number</label>
+      <input type="text" id="whatsapp" placeholder="e.g. 08123456789" required />
+
+      <label>Screenshot (proof)</label>
+      <input type="file" id="screenshot" accept="image/*" required />
+
+      <button type="submit" id="submitBtn">Submit for Review</button>
+    </form>
+
+    <p class="terms">📢 By submitting, you agree to our terms: <br>
+      After negotiation, all payments must go through Black Market middleman for your safety.<br>
+      Contact middleman at <a style="color:#39f" href="https://wa.me/2348169668409" target="_blank">08169668409</a>.
+    </p>
+  </div>
+
+  <div class="listing-box">
+    <h2>Available Listings</h2>
+    <div id="listings">Loading...</div>
+  </div>
+
+  <!-- Custom Alert -->
+  <div id="customAlert">
+    <div class="box">
+      <h2 id="alertTitle">Alert</h2>
+      <p id="alertMessage">Something happened.</p>
+      <button onclick="hideCustomAlert()">Okay</button>
+    </div>
+  </div>
+
+  <script>
+  const canvas = document.getElementById('matrix');
+  const ctx = canvas.getContext('2d');
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const letters = "01";
+  const fontSize = 14;
+  const columns = Math.floor(canvas.width / fontSize);
+  const drops = new Array(columns).fill(1);
+
+  function draw() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#00ffe1";
+    ctx.font = `${fontSize}px monospace`;
+
+    for (let i = 0; i < drops.length; i++) {
+      const text = letters[Math.floor(Math.random() * letters.length)];
+      ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+
+      drops[i]++;
+    }
+  }
+
+  setInterval(draw, 50);
+</script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBCZOF7uAxlygOk1ydwSP-j3BiYzyxulf4",
+      authDomain: "black-market-b6eee.firebaseapp.com",
+      projectId: "black-market-b6eee"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Cloudinary Upload
+    async function uploadToCloudinary(file) {
+      const fd = new FormData();
+      fd.append("upload_preset", "Blackmarket");
+      fd.append("file", file);
+
+      const res = await fetch("https://api.cloudinary.com/v1_1/dilffurcn/image/upload", {
+        method: "POST",
+        body: fd
+      });
+      const data = await res.json();
+      return data.secure_url;
+    }
+
+    document.getElementById("sellForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("submitBtn");
+      btn.textContent = "Submitting...";
+      btn.disabled = true;
+
+      const file = document.getElementById("screenshot").files[0];
+      if (!file) return showCustomAlert("Error", "Screenshot is required");
+
+      const user = await auth.currentUser;
+      if (!user) return showCustomAlert("Login Required", "Please login to continue.");
+
+      try {
+        const screenshotUrl = await uploadToCloudinary(file);
+
+        const post = {
+          uid: user.uid,
+          platform: document.getElementById("platform").value,
+          previewLink: document.getElementById("previewLink").value,
+          followers: +document.getElementById("followers").value,
+          price: +document.getElementById("price").value,
+          description: document.getElementById("description").value,
+          whatsapp: document.getElementById("whatsapp").value.trim(),
+          screenshot: screenshotUrl,
+          status: "pending",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection("accounts-for-sale").add(post);
+        showCustomAlert("Submitted!", "✅ Your account listing is under review.");
+        e.target.reset();
+      } catch (err) {
+        showCustomAlert("Upload Failed", "❌ There was a problem uploading your screenshot.");
+      }
+
+      btn.textContent = "Submit for Review";
+      btn.disabled = false;
+    };
+
+    auth.onAuthStateChanged(async user => {
+      if (!user) return;
+      const container = document.getElementById("listings");
+      const now = new Date();
+      const query = await db.collection("accounts-for-sale")
+                            .where("status", "==", "approved")
+                            .orderBy("createdAt", "desc")
+                            .get();
+
+      container.innerHTML = "";
+      query.forEach(doc => {
+        const d = doc.data();
+        const createdAt = d.createdAt?.toDate?.() || now;
+        const hoursAgo = (now - createdAt) / (1000 * 60 * 60);
+        if (hoursAgo > 24) return;
+
+        const wa = `https://wa.me/234${d.whatsapp.replace(/^0/, '')}?text=Hello, I'm interested in your ${d.platform} account listed on Black Market.`;
+        container.innerHTML += `
+          <div class="listing">
+            <strong>${d.platform}</strong><br>
+            🔗 <a href="${d.previewLink}" target="_blank">Preview Account</a><br>
+            👥 ${d.followers} followers<br>
+            💰 ₦${d.price}<br>
+            📝 ${d.description}<br>
+            🧾 UID: <code>${d.uid}</code><br>
+            <a href="${wa}" target="_blank">📲 Contact Seller on WhatsApp</a>
+            <img src="${d.screenshot}" alt="Screenshot" />
+          </div>
+        `;
+      });
+
+      if (container.innerHTML.trim() === "") {
+        container.innerHTML = "😴 No listings yet.";
+      }
+    });
+
+    function showCustomAlert(title, message) {
+      document.getElementById("alertTitle").textContent = title;
+      document.getElementById("alertMessage").textContent = message;
+      document.getElementById("customAlert").style.display = "flex";
+      if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
+    }
+
+    function hideCustomAlert() {
+      document.getElementById("customAlert").style.display = "none";
+    }
+  </script>
+</body>
+</html>
