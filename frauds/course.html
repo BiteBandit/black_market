@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Course Page</title>
   <style>
     body {
@@ -27,7 +28,7 @@
       text-align: center;
       margin-bottom: 10px;
     }
-    .course-count {
+no    .course-count {
       text-align: center;
       margin-bottom: 20px;
       font-size: 18px;
@@ -42,6 +43,25 @@
     }
     .course h3 {
       margin: 0 0 10px;
+    }
+    .course h3, .course p {
+  word-wrap: break-word;
+          }
+    h1 {
+  font-size: 6vw; /* adjusts based on screen width */
+}
+
+.course {
+  padding: 4vw;
+}
+    @media (max-width: 600px) {
+  .btn {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  .course {
+    margin: 5px 0;
+  }
     }
     .btn {
       background: #facc15;
@@ -208,47 +228,56 @@
     });
 
     async function loadCourses() {
-      const userDoc = await getDoc(doc(db, "users", userId));
-      ownedCourses = userDoc.exists() && userDoc.data().ownedCourses || [];
+  const userDoc = await getDoc(doc(db, "users", userId));
+  ownedCourses = userDoc.exists() && userDoc.data().ownedCourses || [];
+  
+  const userRole = userDoc.exists() ? userDoc.data().role : "";
 
-      const courseSnapshot = await getDocs(collection(db, "courses"));
-      let count = 0;
+  const courseSnapshot = await getDocs(collection(db, "courses"));
 
-      courseList.innerHTML = "";
-      courseSnapshot.forEach(docSnap => {
-        const course = docSnap.data();
-        const isOwned = ownedCourses.includes(docSnap.id);
-        const isAdmin = userDoc.data().role === "admin";
+  courseList.innerHTML = "";
+  let count = 0;
 
-        const div = document.createElement("div");
-        div.className = "course";
+  courseSnapshot.forEach(docSnap => {
+    const course = docSnap.data();
 
-        div.innerHTML = `
-          <h3>${course.title}</h3>
-          <p>Size: ${course.size} MB</p>
-          <p>${course.description || ""}</p>
-          <button class="btn ${isOwned ? "btn-own" : ""}" 
-                  onclick="${isOwned ? `downloadCourse('${course.download}')` : `buyCourse('${docSnap.id}', '${course.price}', '${course.download}')`}">
-            ${isOwned ? "Download" : course.price === 0 ? "Free" : `Buy (${course.price})`}
-          </button>
-          <div class="star-rating" data-id="${docSnap.id}">
-            ${[1,2,3,4,5].map(n => `<span class="star" data-star="${n}">&#9733;</span>`).join('')}
-          </div>
-          <div class="average-rating" id="avg-${docSnap.id}" style="margin-top: 6px; font-size: 0.95rem; color: #ccc;">
-  Loading rating...
-</div>
-          ${isAdmin ? `<div class="admin-controls">
-              <button class="btn" onclick="editCourse('${docSnap.id}')">Edit</button>
-              <button class="btn" onclick="deleteCourse('${docSnap.id}')">Delete</button>
+    // ✅ Show courses for user's role, "all", or admin
+    if (course.role === userRole || course.role === "all" || userRole === "admin") {
+      const isOwned = ownedCourses.includes(docSnap.id);
+      const isAdmin = userRole === "admin";
+
+      const div = document.createElement("div");
+      div.className = "course";
+
+      div.innerHTML = `
+        <h3>${course.title}</h3>
+        <p>Size: ${course.size} MB</p>
+        <p>${course.description || ""}</p>
+        <button class="btn ${isOwned ? "btn-own" : ""}" 
+                onclick="${isOwned ? `downloadCourse('${course.download}')` : `buyCourse('${docSnap.id}', '${course.price}', '${course.download}')`}">
+          ${isOwned ? "Download" : course.price === 0 ? "Free" : `Buy (${course.price})`}
+        </button>
+        <div class="star-rating" data-id="${docSnap.id}">
+          ${[1, 2, 3, 4, 5].map(n => `<span class="star" data-star="${n}">&#9733;</span>`).join('')}
+        </div>
+        <div class="average-rating" id="avg-${docSnap.id}" style="margin-top: 6px; font-size: 0.95rem; color: #ccc;">
+          Loading rating...
+        </div>
+        ${isAdmin ? `
+          <div class="admin-controls">
+            <button class="btn" onclick="editCourse('${docSnap.id}')">Edit</button>
+            <button class="btn" onclick="deleteCourse('${docSnap.id}')">Delete</button>
           </div>` : ""}
-        `;
-        courseList.appendChild(div);
+      `;
 
-        count += isOwned ? 1 : 0;
-      });
+      courseList.appendChild(div);
 
-      courseCount.textContent = `You own ${count} course${count !== 1 ? "s" : ""}`;
-      await initRatingEvents(); // make it await
+      if (isOwned) count++;
+    }
+  });
+
+  courseCount.textContent = `You own ${count} course${count !== 1 ? "s" : ""}`;
+  await initRatingEvents();
     }
 
     window.downloadCourse = (link) => {
