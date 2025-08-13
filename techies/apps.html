@@ -1,6 +1,7 @@
 <!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hacked & Modded Apps</title>
   <style>
     body {
@@ -41,6 +42,25 @@
     }
     .app h3 {
       margin: 0 0 10px;
+    }
+    h1 {
+  font-size: 6vw; /* adjusts based on screen width */
+}
+
+.app {
+  padding: 4vw;
+}
+    .app h3, .app p {
+  word-wrap: break-word;
+    }
+    @media (max-width: 600px) {
+  .btn {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  .app {
+    margin: 5px 0;
+  }
     }
     .btn {
       background: #facc15;
